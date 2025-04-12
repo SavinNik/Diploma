@@ -12,8 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
-from django.conf.global_settings import EMAIL_BACKEND, SERVER_EMAIL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -84,11 +84,11 @@ WSGI_APPLICATION = 'orders.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'my_db',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DATABASE_NAME'),
+        'USER': config('DATABASE_USER'),
+        'PASSWORD': config('DATABASE_PASSWORD'),
+        'HOST': config('DATABASE_HOST'),
+        'PORT': config('DATABASE_PORT'),
     }
 }
 
@@ -115,19 +115,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-# Язык по умолчанию
 LANGUAGE_CODE = 'en-us'
-
-# Часовой пояс
 TIME_ZONE = 'UTC'
-
-# Использование международных настроек форматирования дат и чисел
 USE_I18N = True
-
-# Использование локали для форматирования дат и чисел
 USE_L10N = True
-
-# Использование времени в формате UTC
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -138,26 +129,16 @@ STATIC_URL = 'static/'
 # Переопределение модели пользователя
 AUTH_USER_MODEL = 'backend.User'
 
+
 # Настройки электронной почты
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-# Хост SMTP-сервера
-EMAIL_HOST = 'smtp.mail.ru'
-
-# Логин для SMTP-сервера
-EMAIL_HOST_USER = 'netology.diplom@mail.ru'
-
-# Пароль для SMTP-сервера
-EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
-
-# Порт SMTP-сервера
-EMAIL_PORT = '465'
-
-# Использование SSL для SMTP-сервера
-EMAIL_USE_SSL = True
-
-# Адрес отправителя
-SERVER_EMAIL = EMAIL_HOST_USER
+EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config('EMAIL_HOST')                               # Хост SMTP-сервера
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')                     # Логин для SMTP-сервера
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')             # Пароль для SMTP-сервера
+EMAIL_PORT = config('EMAIL_PORT')                               # Порт SMTP-сервера
+EMAIL_USE_SSL = config('EMAIL_USE_SSL')                         # Использование SSL для SMTP-сервера
+EMAIL_USE_TLS = config('EMAIL_USE_TLS')                         # Использование TLS для SMTP-сервера
+SERVER_EMAIL = config('SERVER_EMAIL')                           # Адрес отправителя
 
 # Настройки REST Framework
 REST_FRAMEWORK = {
