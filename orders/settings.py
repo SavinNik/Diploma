@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+from django.conf.global_settings import EMAIL_BACKEND, SERVER_EMAIL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_passwordreset',
 
     'backend',
 ]
@@ -110,14 +115,19 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
+# Язык по умолчанию
 LANGUAGE_CODE = 'en-us'
 
+# Часовой пояс
 TIME_ZONE = 'UTC'
 
+# Использование международных настроек форматирования дат и чисел
 USE_I18N = True
 
+# Использование локали для форматирования дат и чисел
 USE_L10N = True
 
+# Использование времени в формате UTC
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -125,7 +135,44 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Переопределение модели пользователя
 AUTH_USER_MODEL = 'backend.User'
+
+# Настройки электронной почты
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# Хост SMTP-сервера
+EMAIL_HOST = 'smtp.mail.ru'
+
+# Логин для SMTP-сервера
+EMAIL_HOST_USER = 'netology.diplom@mail.ru'
+
+# Пароль для SMTP-сервера
+EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
+
+# Порт SMTP-сервера
+EMAIL_PORT = '465'
+
+# Использование SSL для SMTP-сервера
+EMAIL_USE_SSL = True
+
+# Адрес отправителя
+SERVER_EMAIL = EMAIL_HOST_USER
+
+# Настройки REST Framework
+REST_FRAMEWORK = {
+    # Класс аутентификации
+    'DEFAULT_AUTHENTICATION_CLASSES':
+        'rest_framework.authentication.TokenAuthentication',
+    # Класс рендеринга
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
+    # Класс пагинации
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 40,
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
