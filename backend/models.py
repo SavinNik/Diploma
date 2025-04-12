@@ -197,12 +197,17 @@ class ProductInfo(models.Model):
     external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True)
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE,
                                 blank=True)
+    shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE,
+                             blank=True)
+    quantity = models.PositiveIntegerField(verbose_name='Количество')
+    price = models.PositiveIntegerField(verbose_name='Цена')
+    price_rrc = models.PositiveIntegerField(verbose_name='Рекомендуемая розничная цена')
 
     class Meta:
         verbose_name = 'Информация о продукте'
         verbose_name_plural = 'Список информации о продуктах'
         constraints = [
-            models.UniqueConstraint(fields=['product', 'external_id', 'shop'], name='unique_product_info')
+            models.UniqueConstraint(fields=['product', 'shop', 'external_id'], name='unique_product_info')
         ]
 
 
