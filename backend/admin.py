@@ -26,7 +26,6 @@ class ShopAdmin(admin.ModelAdmin):
     """
     Панель управления магазинами
     """
-    model = Shop
     list_display = ('name', 'url', 'user', 'state')
     list_filter = ('state',)
     search_fields = ('name', 'url')
@@ -37,7 +36,6 @@ class CategoryAdmin(admin.ModelAdmin):
     """
     Панель управления категориями
     """
-    model = Category
     list_display = ('name',)
     search_fields = ('name',)
     filter_horizontal = ('shops',)
@@ -48,7 +46,6 @@ class ProductAdmin(admin.ModelAdmin):
     """
     Панель управления продуктами
     """
-    model = Product
     list_display = ('name', 'category')
     search_fields = ('name',)
     filter_horizontal = ('category',)
@@ -59,7 +56,10 @@ class ProductInfoAdmin(admin.ModelAdmin):
     """
     Панель управления информацией о продуктах
     """
-    model = ProductInfo
+    list_display = ('model', 'product', 'shop', 'quantity', 'price', 'price_rrc')
+    search_fields = ('model', 'product__name', 'shop__name')
+    list_filter = ('product', 'shop__category')
+    readonly_fields = ('external_id',)
 
 
 @admin.register(Parameter)
@@ -67,7 +67,8 @@ class ParameterAdmin(admin.ModelAdmin):
     """
     Панель управления параметрами продуктов
     """
-    model = Parameter
+    list_display = ('name',)
+    search_fields = ('name',)
 
 
 @admin.register(ProductParameter)
@@ -75,7 +76,8 @@ class ProductParameterAdmin(admin.ModelAdmin):
     """
     Панель управления параметрами продуктов
     """
-    model = ProductParameter
+    list_display = ('product_info', 'parameter', 'value')
+    search_fields = ('product_info__product__name', 'parameter__name')
 
 
 @admin.register(Order)
@@ -83,7 +85,11 @@ class OrderAdmin(admin.ModelAdmin):
     """
     Панель управления заказами
     """
-    model = Order
+    list_display = ('user', 'status', 'date', 'contact')
+    search_fields = ('user__email',)
+    list_filter = ('status', 'date')
+    readonly_fields = ('date',)
+    filter_horizontal = ('ordered_items',)
 
 
 @admin.register(OrderItem)
@@ -91,7 +97,10 @@ class OrderItemAdmin(admin.ModelAdmin):
     """
     Панель управления заказанными позициями
     """
-    model = OrderItem
+    list_display = ('order', 'product_info', 'quantity')
+    search_fields = ('order__user__email', 'product_info__product__name')
+    list_filter = ('order', 'product_info__product__category')
+    readonly_fields = ('order', 'product_info',)
 
 
 @admin.register(Contact)
@@ -99,7 +108,9 @@ class ContactAdmin(admin.ModelAdmin):
     """
     Панель управления контактами
     """
-    model = Contact
+    list_display = ('user', 'city', 'street', 'house', 'structure', 'buildings', 'apartment', 'phone')
+    search_fields = ('user__email', 'city', 'street',)
+    filter_horizontal = ('user',)
 
 
 @admin.register(ConfirmEmailToken)
@@ -107,4 +118,7 @@ class ConfirmEmailTokenAdmin(admin.ModelAdmin):
     """
     Панель управления токенами подтверждения email
     """
-    model = ConfirmEmailToken
+    list_display = ('user', 'created_at', 'key')
+    search_fields = ('user__email',)
+    list_filter = ('created_at',)
+    readonly_fields = ('created_at',)
