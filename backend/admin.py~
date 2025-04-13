@@ -29,6 +29,7 @@ class ShopAdmin(admin.ModelAdmin):
     list_display = ('name', 'url', 'user', 'state')
     list_filter = ('state',)
     search_fields = ('name', 'url')
+    filter_horizontal = ('user',)
 
 
 @admin.register(Category)
@@ -89,6 +90,7 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ('user__email',)
     list_filter = ('status', 'date')
     readonly_fields = ('date',)
+    filter_horizontal = ('ordered_items',)
 
 
 @admin.register(OrderItem)

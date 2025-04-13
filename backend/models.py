@@ -6,7 +6,7 @@ from django.db import models
 from django_rest_passwordreset.tokens import get_token_generator
 
 # Константы для состояния заказа
-STATES_CHOICES = (
+STATE_CHOICES = (
     ('new', 'Новый'),
     ('confirmed', 'Подтвержден'),
     ('delivered', 'Доставлен'),
@@ -85,6 +85,7 @@ class UserManager(BaseUserManager):
         """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
         if extra_fields.get('is_superuser') is not True:
@@ -128,7 +129,7 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-    class Mete:
+    class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Список пользователей'
         ordering = ('email',)
@@ -138,7 +139,7 @@ class Shop(models.Model):
     """
     Модель магазина
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     name = models.CharField(verbose_name='Название магазина', max_length=50)
     url = models.URLField(verbose_name='Ссылка на магазин', null=True, blank=True)
     user = models.OneToOneField(User, verbose_name='Пользователь', on_delete=models.CASCADE, null=True, blank=True)
@@ -157,7 +158,7 @@ class Category(models.Model):
     """
     Модель категории
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     name = models.CharField(verbose_name='Название категории', max_length=50)
     shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories', blank=True)
 
@@ -174,7 +175,7 @@ class Product(models.Model):
     """
     Модель продукта
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     name = models.CharField(verbose_name='Название продукта', max_length=50)
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', on_delete=models.CASCADE,
                                  blank=True)
@@ -192,7 +193,7 @@ class ProductInfo(models.Model):
     """
     Модель информации о продукте
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     model = models.CharField(verbose_name='Модель', max_length=50, blank=True)
     external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True)
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE,
@@ -215,7 +216,7 @@ class Parameter(models.Model):
     """
     Модель параметра продукта
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     name = models.CharField(verbose_name='Название параметра', max_length=50)
 
     class Meta:
@@ -231,7 +232,7 @@ class ProductParameter(models.Model):
     """
     Модель параметра продукта
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
                                      related_name='product_parameters', on_delete=models.CASCADE, blank=True)
     parameter = models.ForeignKey(Parameter, verbose_name='Параметр', related_name='product_parameters',
@@ -250,7 +251,7 @@ class Contact(models.Model):
     """
     Модель контактов пользователя
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     user = models.ForeignKey(User, verbose_name='Пользователь', related_name='contacts', on_delete=models.CASCADE)
     city = models.CharField(verbose_name='Город', max_length=50)
     street = models.CharField(verbose_name='Улица', max_length=50)
@@ -272,14 +273,14 @@ class Order(models.Model):
     """
     Модель заказа
     """
-    objects = models.manager.Manager()
-    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='orders', on_delete=models.CASCADE,
-                             blank=True)
+    objects = models.Manager()
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='orders', on_delete=models.CASCADE)
     date = models.DateTimeField(verbose_name='Дата заказа', auto_now_add=True)
-    status = models.CharField(verbose_name='Статус заказа', max_length=50, choices=STATES_CHOICES)
+    status = models.CharField(verbose_name='Статус заказа', max_length=50, choices=STATE_CHOICES)
     contact = models.ForeignKey(Contact, verbose_name='Контакты', null=True, on_delete=models.CASCADE, blank=True)
 
-    class Mete:
+
+    class Meta:
         verbose_name = 'Заказ'
         verbose_name_plural = 'Список заказов'
         ordering = ('-date',)
@@ -292,7 +293,7 @@ class OrderItem(models.Model):
     """
     Модель элемента заказа
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
     order = models.ForeignKey(Order, verbose_name='Заказ', related_name='order_items', on_delete=models.CASCADE,
                               blank=True)
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
@@ -311,7 +312,7 @@ class ConfirmEmailToken(models.Model):
     """
     Модель токена подтверждения email
     """
-    objects = models.manager.Manager()
+    objects = models.Manager()
 
     @staticmethod
     def generate_key():
