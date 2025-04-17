@@ -66,3 +66,31 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         )
         message.send()
         
+
+@receiver(new_order)
+def new_order_signal(user_id: int, *args, **kwargs):
+    """
+    Сигнал для отправки письма при размещении нового заказа
+
+    Args:
+        user_id: ID пользователя
+        *args: Дополнительные аргументы
+        **kwargs: Дополнительные аргументы
+    """
+    # Получаем пользователя по ID
+    user = User.objects.get(id=user_id)
+    # Отправляем письмо попользователю о новом заказе
+    message = EmailMultiAlternatives(
+        # Заголовок письма
+        f'Обновление статуса заказа',
+        # Текст письма
+        'Заказ сформирован',
+        # Отправитель
+        settings.EMAIL_HOST_USER,
+        # Получатели
+        [user.email]
+    )
+    message.send()
+    
+    
+    

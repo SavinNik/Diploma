@@ -17,6 +17,7 @@ from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoS
 from yaml import load as load_yaml, Loader
 import requests
 from backend.utils import string_to_bool
+from backend.signals import new_order
 
 class RegisterAccount(APIView):
     """
@@ -622,10 +623,6 @@ class OrderView(APIView):
                     return JsonResponse({'Status': False, 'Errors': str(error)})
                 else:
                     if is_updated:
+                        new_order.send(sender=self.__class__, user_id=request.user.id)
                         return JsonResponse({'Status': True})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
-
-    
-    
-    
