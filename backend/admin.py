@@ -7,7 +7,14 @@ from backend.models import User, Shop, Product, ProductInfo, Category, Order, Or
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     """
-    Панель управления пользователями
+    Административная панель для управления пользователями.
+    
+    Attributes:
+        model: Модель пользователя
+        fieldsets: Группы полей для отображения в форме редактирования
+        list_display: Поля для отображения в списке пользователей
+        list_filter: Поля для фильтрации списка пользователей
+        search_fields: Поля для поиска пользователей
     """
     model = User
     fieldsets = (
@@ -16,7 +23,7 @@ class CustomUserAdmin(UserAdmin):
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'user_permissions', 'groups')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    list_display = ('email', 'first_name', 'last_name', 'is_staff', 'user_type', 'is_active' )
+    list_display = ('email', 'first_name', 'last_name', 'is_staff', 'user_type', 'is_active')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'user_type')
     search_fields = ('email', 'first_name', 'last_name', 'company', 'position')
 
@@ -24,7 +31,12 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
     """
-    Панель управления магазинами
+    Административная панель для управления магазинами.
+    
+    Attributes:
+        list_display: Поля для отображения в списке магазинов
+        list_filter: Поля для фильтрации списка магазинов
+        search_fields: Поля для поиска магазинов
     """
     list_display = ('name', 'url', 'user', 'state')
     list_filter = ('state',)
@@ -34,7 +46,12 @@ class ShopAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     """
-    Панель управления категориями
+    Административная панель для управления категориями.
+    
+    Attributes:
+        list_display: Поля для отображения в списке категорий
+        search_fields: Поля для поиска категорий
+        filter_horizontal: Поля для горизонтального фильтра
     """
     list_display = ('name',)
     search_fields = ('name',)
@@ -44,7 +61,12 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     """
-    Панель управления продуктами
+    Административная панель для управления продуктами.
+    
+    Attributes:
+        list_display: Поля для отображения в списке продуктов
+        search_fields: Поля для поиска продуктов
+        list_filter: Поля для фильтрации списка продуктов
     """
     list_display = ('name', 'category__name')
     search_fields = ('name', 'category__name')
@@ -54,7 +76,13 @@ class ProductAdmin(admin.ModelAdmin):
 @admin.register(ProductInfo)
 class ProductInfoAdmin(admin.ModelAdmin):
     """
-    Панель управления информацией о продуктах
+    Административная панель для управления информацией о продуктах.
+    
+    Attributes:
+        list_display: Поля для отображения в списке информации о продуктах
+        search_fields: Поля для поиска информации о продуктах
+        list_filter: Поля для фильтрации списка информации о продуктах
+        readonly_fields: Поля, доступные только для чтения
     """
     list_display = ('model', 'product__name', 'shop__name', 'quantity', 'price', 'price_rrc')
     search_fields = ('model', 'product__name', 'shop__name', 'product__category__name')
@@ -65,7 +93,11 @@ class ProductInfoAdmin(admin.ModelAdmin):
 @admin.register(Parameter)
 class ParameterAdmin(admin.ModelAdmin):
     """
-    Панель управления параметрами продуктов
+    Административная панель для управления параметрами продуктов.
+    
+    Attributes:
+        list_display: Поля для отображения в списке параметров
+        search_fields: Поля для поиска параметров
     """
     list_display = ('name',)
     search_fields = ('name',)
@@ -74,7 +106,11 @@ class ParameterAdmin(admin.ModelAdmin):
 @admin.register(ProductParameter)
 class ProductParameterAdmin(admin.ModelAdmin):
     """
-    Панель управления параметрами продуктов
+    Административная панель для управления параметрами продуктов.
+    
+    Attributes:
+        list_display: Поля для отображения в списке параметров продуктов
+        search_fields: Поля для поиска параметров продуктов
     """
     list_display = ('product_info__product__name', 'parameter__name', 'value')
     search_fields = ('product_info__product__name', 'parameter__name')
@@ -83,7 +119,13 @@ class ProductParameterAdmin(admin.ModelAdmin):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     """
-    Панель управления заказами
+    Административная панель для управления заказами.
+    
+    Attributes:
+        list_display: Поля для отображения в списке заказов
+        search_fields: Поля для поиска заказов
+        list_filter: Поля для фильтрации списка заказов
+        readonly_fields: Поля, доступные только для чтения
     """
     list_display = ('user', 'status', 'date', 'contact')
     search_fields = ('user__email',)
@@ -94,28 +136,45 @@ class OrderAdmin(admin.ModelAdmin):
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     """
-    Панель управления заказанными позициями
+    Административная панель для управления заказанными позициями.
+    
+    Attributes:
+        list_display: Поля для отображения в списке позиций заказа
+        search_fields: Поля для поиска позиций заказа
+        list_filter: Поля для фильтрации списка позиций заказа
+        readonly_fields: Поля, доступные только для чтения
     """
     list_display = ('order', 'product_info__product__name', 'quantity')
     search_fields = ('order__user__email', 'product_info__product__name')
     list_filter = ('order__user__email', 'product_info__product__category__name')
-    readonly_fields = ('order', 'product_info',)
+    readonly_fields = ('order', 'product_info')
 
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
     """
-    Панель управления контактами
+    Административная панель для управления контактами пользователей.
+    
+    Attributes:
+        list_display: Поля для отображения в списке контактов
+        search_fields: Поля для поиска контактов
+        list_filter: Поля для фильтрации списка контактов
     """
     list_display = ('user', 'city', 'street', 'house', 'structure', 'buildings', 'apartment', 'phone')
-    search_fields = ('user__email', 'city', 'street',)
+    search_fields = ('user__email', 'city', 'street')
     list_filter = ('user',)
 
 
 @admin.register(ConfirmEmailToken)
 class ConfirmEmailTokenAdmin(admin.ModelAdmin):
     """
-    Панель управления токенами подтверждения email
+    Административная панель для управления токенами подтверждения email.
+    
+    Attributes:
+        list_display: Поля для отображения в списке токенов
+        search_fields: Поля для поиска токенов
+        list_filter: Поля для фильтрации списка токенов
+        readonly_fields: Поля, доступные только для чтения
     """
     list_display = ('user', 'created_at', 'key')
     search_fields = ('user__email',)

@@ -25,7 +25,8 @@ USER_TYPE_CHOICES = (
 
 class UserManager(BaseUserManager):
     """
-    Миксин для управления пользователями
+    Менеджер для работы с пользователями.
+    Обеспечивает создание обычных пользователей и суперпользователей.
     """
     user_in_migrations = True
 
@@ -34,15 +35,15 @@ class UserManager(BaseUserManager):
         Создает и сохраняет пользователя с указанными email и паролем.
 
         Args:
-            email (str): Электронная почта пользователя.
-            password (str): Пароль пользователя.
-            **extra_fields (dict): Дополнительные поля пользователя.
+            email (str): Электронная почта пользователя
+            password (str): Пароль пользователя
+            **extra_fields (dict): Дополнительные поля пользователя
 
         Returns:
-            User: Созданный пользователь.
+            User: Созданный пользователь
 
         Raises:
-            ValueError: Если email не указан.
+            ValueError: Если email не указан
         """
         if not email:
             raise ValueError('The given email must be set')
@@ -62,7 +63,7 @@ class UserManager(BaseUserManager):
             **extra_fields: Дополнительные поля пользователя.
 
         Returns:
-            User: Созданный пользователь.
+            User: Созданный пользователь.
         """
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
@@ -78,7 +79,7 @@ class UserManager(BaseUserManager):
             **extra_fields: Дополнительные поля суперпользователя.
 
         Returns:
-            User: Созданный суперпользователь.
+            User: Созданный суперпользователь.
 
         Raises:
             ValueError: Если is_staff или is_superuser не установлены в True.
@@ -95,7 +96,9 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     """
-    Стандартная модель пользователя
+    Модель пользователя системы.
+    Расширяет стандартную модель пользователя Django дополнительными полями
+    для работы с магазинами и покупателями.
     """
     REQUIRED_FIELDS = []
     objects = UserManager()
@@ -137,7 +140,8 @@ class User(AbstractUser):
 
 class Shop(models.Model):
     """
-    Модель магазина
+    Модель магазина в системе.
+    Содержит информацию о магазине, его URL и статусе получения заказов.
     """
     objects = models.Manager()
     name = models.CharField(verbose_name='Название магазина', max_length=50)
@@ -191,15 +195,14 @@ class Product(models.Model):
 
 class ProductInfo(models.Model):
     """
-    Модель информации о продукте
+    Модель информации о продукте в конкретном магазине.
+    Содержит данные о наличии, цене и других характеристиках продукта.
     """
     objects = models.Manager()
     model = models.CharField(verbose_name='Модель', max_length=50, blank=True)
     external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True)
-    product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE,
-                                blank=True)
-    shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE,
-                             blank=True)
+    product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE)
+    shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')
     price = models.PositiveIntegerField(verbose_name='Цена')
     price_rrc = models.PositiveIntegerField(verbose_name='Рекомендуемая розничная цена')
@@ -234,9 +237,9 @@ class ProductParameter(models.Model):
     """
     objects = models.Manager()
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
-                                     related_name='product_parameters', on_delete=models.CASCADE, blank=True)
+                                     related_name='product_parameters', on_delete=models.CASCADE)
     parameter = models.ForeignKey(Parameter, verbose_name='Параметр', related_name='product_parameters',
-                                  on_delete=models.CASCADE, blank=True)
+                                  on_delete=models.CASCADE)
     value = models.CharField(verbose_name='Значение', max_length=50)
 
     class Meta:
@@ -294,10 +297,9 @@ class OrderItem(models.Model):
     Модель элемента заказа
     """
     objects = models.Manager()
-    order = models.ForeignKey(Order, verbose_name='Заказ', related_name='order_items', on_delete=models.CASCADE,
-                              blank=True)
+    order = models.ForeignKey(Order, verbose_name='Заказ', related_name='order_items', on_delete=models.CASCADE)
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
-                                     related_name='ordered_items', on_delete=models.CASCADE, blank=True)
+                                     related_name='ordered_items', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')
 
     class Meta:
@@ -310,34 +312,31 @@ class OrderItem(models.Model):
 
 class ConfirmEmailToken(models.Model):
     """
-    Модель токена подтверждения email
+    Модель токена для подтверждения email-адреса пользователя.
+    Используется при регистрации и сбросе пароля.
     """
     objects = models.Manager()
 
     @staticmethod
     def generate_key():
         """
-        Генерирует случайный ключ с помощью os.urandom и binascii.hexlify
+        Генерирует случайный ключ для подтверждения email.
 
-        :return:
-            str: Сгенерированный ключ
+        Returns:
+            str: Сгенерированный ключ в формате hex
         """
         return get_token_generator().generate_token()
 
-    user = models.ForeignKey(User, related_name='confirm_email_tokens', on_delete=models.CASCADE, verbose_name=_('Пользователь связанный с токеном'))
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Время создания токена'))
-    key = models.CharField(_('Ключ'), max_length=64, db_index=True, unique=True)
-
-    def seve(self, *args, **kwargs):
+    def save(self, *args, **kwargs):
         """
-        Сохраняет токен, генерируя новый ключ, если его не было
+        Сохраняет токен, генерируя новый ключ, если его не было.
 
         Args:
             *args: Позиционные аргументы
             **kwargs: Ключевые аргументы
 
         Returns:
-             ConfirmEmailToken: Сохраненный токен
+            ConfirmEmailToken: Сохраненный токен
         """
         if not self.key:
             self.key = self.generate_key()
