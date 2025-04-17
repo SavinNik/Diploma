@@ -625,5 +625,7 @@ class OrderView(APIView):
                         return JsonResponse({'Status': True})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
     
+
+    
     
     
