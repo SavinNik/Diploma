@@ -173,10 +173,18 @@ class ConfirmEmailTokenAdmin(admin.ModelAdmin):
     Attributes:
         list_display: Поля для отображения в списке токенов
         search_fields: Поля для поиска токенов
-        list_filter: Поля для фильтрации списка токенов
-        readonly_fields: Поля, доступные только для чтения
     """
-    list_display = ('user', 'created_at', 'key')
+    def user_email(self, obj):
+        return obj.user.email if obj.user else '-'
+    user_email.short_description = 'Email пользователя'
+
+    def token_created(self, obj):
+        return obj.created_at
+    token_created.short_description = 'Дата создания'
+
+    def token_key(self, obj):
+        return obj.key
+    token_key.short_description = 'Токен'
+
+    list_display = ('user_email', 'token_created', 'token_key')
     search_fields = ('user__email',)
-    list_filter = ('created_at',)
-    readonly_fields = ('created_at',)

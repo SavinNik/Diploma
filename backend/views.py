@@ -161,7 +161,7 @@ class CategoryView(ListAPIView):
     """
     Класс для получения списка категорий
     """
-    queryset = Category.objects.filter(is_active=True)
+    queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
@@ -330,7 +330,7 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerOrders(APIView):
+class PartnerUpdate(APIView):
     """
     Класс для обновления информации о партнере
     """
