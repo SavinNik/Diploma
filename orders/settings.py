@@ -160,7 +160,7 @@ REST_FRAMEWORK = {
 # Настройки Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
-CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_TIME_LIMIT = config('CELERY_TASK_TIME_LIMIT')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
