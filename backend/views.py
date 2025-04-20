@@ -598,3 +598,59 @@ class OrderView(APIView):
                         new_order.send(sender=self.__class__, user_id=request.user.id)
                         return JsonResponse({'Status': True})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+class SendEmailView(APIView):
+    """
+    Класс для отправки электронной почты
+    """
+
+    def post(self, request: Request, *args, **kwargs):
+        """
+        Отправка электронной почты с использованием Celery
+
+        Args:
+            request: HTTP-запрос
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
+
+        Returns:
+            JsonResponse: JSON-ответ с результатом отправки электронной почты
+        """
+        subject = request.data.get('subject')
+        message = request.data.get('message')
+        from_email = request.data.get('from_email')
+        recipient_list = request.data.get('recipient_list', [])
+
+        if subject and message and from_email and recipient_list:
+            task = send_email.delay(subject, message, from_email, recipient_list)
+            return JsonResponse({'Status': True, 'Task': str(task), 'Task ID': task.id})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+    
+
+    class TaskStatusView(APIView):
+        """
+        Класс для получения статуса задачи
+        """
+
+        def get(self, request: Request, task_id: str, *args, **kwargs):
+            """
+            Получение статуса задачи
+
+            Args:
+                request: HTTP-запрос
+                task_id: ID задачи
+                *args: Дополнительные аргументы
+                **kwargs: Дополнительные аргументы
+
+            Returns:
+                JsonResponse: JSON-ответ с результатом получения статуса задачи
+            """
+            task_result = AsyncResult(task_id)
+            result = {
+                'task_id': task_id,
+                'task_status': task_result.status,
+                'task_result': task_result.result
+            }
+            return JsonResponse(result)
+
