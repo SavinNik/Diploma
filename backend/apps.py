@@ -11,3 +11,9 @@ class BackendConfig(AppConfig):
     """
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'backend'
+
+    def ready(self):
+        """
+        Метод для выполнения действий при запуске приложения
+        """
+        import backend.signals

@@ -628,29 +628,29 @@ class SendEmailView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
     
 
-    class TaskStatusView(APIView):
+class TaskStatusView(APIView):
+    """
+    Класс для получения статуса задачи
+    """
+
+    def get(self, request: Request, task_id: str, *args, **kwargs):
         """
-        Класс для получения статуса задачи
+        Получение статуса задачи
+
+        Args:
+            request: HTTP-запрос
+            task_id: ID задачи
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
+
+        Returns:
+            JsonResponse: JSON-ответ с результатом получения статуса задачи
         """
-
-        def get(self, request: Request, task_id: str, *args, **kwargs):
-            """
-            Получение статуса задачи
-
-            Args:
-                request: HTTP-запрос
-                task_id: ID задачи
-                *args: Дополнительные аргументы
-                **kwargs: Дополнительные аргументы
-
-            Returns:
-                JsonResponse: JSON-ответ с результатом получения статуса задачи
-            """
-            task_result = AsyncResult(task_id)
-            result = {
-                'task_id': task_id,
-                'task_status': task_result.status,
-                'task_result': task_result.result
-            }
-            return JsonResponse(result)
+        task_result = AsyncResult(task_id)
+        result = {
+            'task_id': task_id,
+            'task_status': task_result.status,
+            'task_result': task_result.result
+        }
+        return JsonResponse(result)
 
