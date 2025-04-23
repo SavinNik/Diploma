@@ -111,7 +111,8 @@ class User(AbstractUser):
     username = models.CharField(
         _('username'),
         max_length=150,
-        unique=True,
+        blank=True,
+        null=True,
         help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
         validators=[username_validator],
         error_messages={
@@ -326,6 +327,10 @@ class ConfirmEmailToken(models.Model):
             str: Сгенерированный ключ в формате hex
         """
         return get_token_generator().generate_token()
+    
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='confirm_email_tokens', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    key = models.CharField(verbose_name='Ключ', max_length=255, unique=True, db_index=True)
 
     def save(self, *args, **kwargs):
         """

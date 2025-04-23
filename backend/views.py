@@ -1,9 +1,6 @@
 import json
 from django.db.models import Q, F, Sum
 from django.db import IntegrityError
-from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError 
-from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.http import JsonResponse
 from rest_framework.views import APIView
@@ -12,10 +9,8 @@ from rest_framework.request import Request
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from backend.serializers import UserSerializer
-from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, ProductParameter, Contact
+from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, ProductParameter, Contact, User
 from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, OrderSerializer, ContactSerializer
-from yaml import load as load_yaml, Loader
-import requests
 from backend.utils import string_to_bool
 from backend.signals import new_order
 from celery.result import AsyncResult
@@ -151,11 +146,16 @@ class LoginAccount(APIView):
             JsonResponse: JSON-ответ с результатом авторизации
         """
         if {'email', 'password'}.issubset(request.data):
-            user = authenticate(request, username=request.data['email'], password=request.data['password'])
-            if user is not None:
-                if user.is_active:
-                    token, _ = Token.objects.get_or_create(user=user)
-                    return JsonResponse({'Status': True, 'Token': token.key})
+            try:
+                user = User.objects.get(email=request.data['email'])
+                if user.check_password(request.data['password']):
+                    if user.is_active:
+                        token, _ = Token.objects.get_or_create(user=user)
+                        return JsonResponse({'Status': True, 'Token': token.key})
+                    else:
+                        return JsonResponse({'Status': False, 'Errors': 'Аккаунт не активирован'})
+            except User.DoesNotExist:
+                pass
             return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
         

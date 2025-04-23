@@ -28,7 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG')
 
-ALLOWED_HOSTS = [config('ALLOWED_HOSTS')]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
 
 # Application definition
@@ -130,17 +130,17 @@ STATIC_URL = 'static/'
 AUTH_USER_MODEL = 'backend.User'
 
 
-# Настройки электронной почты
+# Настройки электронной почты
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')                               # Хост SMTP-сервера
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')                     # Логин для SMTP-сервера
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')             # Пароль для SMTP-сервера
 EMAIL_PORT = config('EMAIL_PORT')                               # Порт SMTP-сервера
-EMAIL_USE_SSL = config('EMAIL_USE_SSL')                         # Использование SSL для SMTP-сервера
-EMAIL_USE_TLS = config('EMAIL_USE_TLS')                         # Использование TLS для SMTP-сервера
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', cast=bool)             # Использование SSL для SMTP-сервера
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)             # Использование TLS для SMTP-сервера
 SERVER_EMAIL = config('SERVER_EMAIL')                           # Адрес отправителя
 
-# Настройки REST Framework
+# Настройки REST Framework
 REST_FRAMEWORK = {
     # Класс аутентификации
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -156,11 +156,24 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 40,
 }
 
+# Настройки аутентификации
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
-# Настройки Celery
+# Настройки Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
 CELERY_TASK_TIME_LIMIT = config('CELERY_TASK_TIME_LIMIT')
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 5
+CELERY_BROKER_CONNECTION_RETRY = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

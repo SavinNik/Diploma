@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Сериализатор модели User
     """
+    contacts = ContactSerializer(read_only=True, many=True)
 
     class Meta:
         model = User

@@ -50,9 +50,9 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         *args: Дополнительные аргументы
         **kwargs: Дополнительные аргументы
     """
-    if created and instance.is_active:
+    if created:
         # Создаем токен для подтверждения email
-        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
+        token, _ = ConfirmEmailToken.objects.get_or_create(user=instance)
         # Отправляем письмо с токеном для подтверждения email
         message = EmailMultiAlternatives(
             # Заголовок письма
@@ -91,6 +91,4 @@ def new_order_signal(user_id: int, *args, **kwargs):
         [user.email]
     )
     message.send()
-    
-    
     
