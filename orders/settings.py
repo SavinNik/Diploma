@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
-
+    'drf_yasg',
+    
     'backend',
 ]
 
@@ -174,6 +175,17 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут
 CELERY_BROKER_CONNECTION_MAX_RETRIES = 5
 CELERY_BROKER_CONNECTION_RETRY = True
+
+
+# Настройки Swagger
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {'type': 'apiKey', 'name': 'Authorization', 'in': 'header'}
+    },
+    'USE_SESSION_AUTH': False,
+    'DOC_EXPANSION': 'none',
+}
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

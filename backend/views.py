@@ -15,12 +15,20 @@ from backend.utils import string_to_bool
 from backend.signals import new_order
 from celery.result import AsyncResult
 from backend.tasks import do_import, send_email
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 
 class RegisterAccount(APIView):
     """
     Класс для регистрации пользователя
     """
+    
+    @swagger_auto_schema(
+        request_body=UserSerializer,
+        responses={200: 'Успешная регистрация', 400: 'Ошибка валидации'}
+    )
+    
     def post(self, request: Request, *args, **kwargs):
         """
         Регистрация нового пользователя
@@ -61,6 +69,17 @@ class ConfirmAccount(APIView):
     """
     Класс для подтверждения аккаунта
     """
+    
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email пользователя'),
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен подтверждения')
+            },
+        ),
+        responses={200: 'Успешное подтверждение', 400: 'Ошибка подтверждения'}
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Подтверждение почтового адреса
@@ -91,6 +110,11 @@ class AccountDetails(APIView):
     """
     Класс для получения и обновления данных аккаунта пользователя
     """
+    
+    @swagger_auto_schema(
+        responses={200: UserSerializer, 403: 'Неавторизованный пользователь'}
+    )
+    
     def get(self, request: Request, *args, **kwargs):
         """
         Получение данных аккаунта пользователя
@@ -133,6 +157,17 @@ class LoginAccount(APIView):
     """
     Класс для авторизации пользователя
     """
+    
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email пользователя'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль пользователя')
+            },
+            responses={200: 'Успешная авторизация', 400: 'Ошибка авторизации', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Авторизация пользователя
@@ -166,6 +201,23 @@ class CategoryView(ListAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    
+    @swagger_auto_schema(
+        responses={200: CategorySerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
+    def get(self, request: Request, *args, **kwargs):
+        """
+        Получение списка категорий
+
+        Args:
+            request: HTTP-запрос
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
+
+        Returns:
+            JsonResponse: JSON-ответ с списком категорий
+        """
+        return super().get(request, *args, **kwargs)
 
 
 class ShopView(ListAPIView):
@@ -174,12 +226,37 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
+    
+    @swagger_auto_schema(
+        responses={200: ShopSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
+    def get(self, request: Request, *args, **kwargs):
+        """
+        Получение списка магазинов
+        
+        Args:
+            request: HTTP-запрос
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
+
+        Returns:
+            JsonResponse: JSON-ответ с списком магазинов
+        """
+        return super().get(request, *args, **kwargs)
 
 
 class ProductInfoView(APIView):
     """
     Класс для получения информации о продукте
     """
+    
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('shop_id', openapi.IN_QUERY, description='ID магазина', required=False, type=openapi.TYPE_INTEGER),
+            openapi.Parameter('category_id', openapi.IN_QUERY, description='ID категории', required=False, type=openapi.TYPE_INTEGER)
+        ],
+        responses={200: ProductInfoSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение информации о продукте с фильтрацией
@@ -216,6 +293,10 @@ class BasketView(APIView):
     """
     Класс для работы с корзиной
     """
+    
+    @swagger_auto_schema(
+        responses={200: OrderItemSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение корзины пользователя
@@ -240,7 +321,16 @@ class BasketView(APIView):
         # Сериализуем данные
         serializer = OrderItemSerializer(basket, many=True)
         return Response(serializer.data)
-    
+        
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'items': openapi.Schema(type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины')
+            },
+            responses={200: 'Успешное добавление товаров в корзину', 400: 'Ошибка добавления товаров в корзину', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Добавление товара в корзину
@@ -271,7 +361,16 @@ class BasketView(APIView):
 
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
             return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-        
+            
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID товаров для удаления')
+            },
+            responses={200: 'Успешное удаление товаров из корзины', 400: 'Ошибка удаления товаров из корзины', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def delete(self, request: Request, *args, **kwargs):
         """
         Удаление товара из корзины
@@ -301,7 +400,17 @@ class BasketView(APIView):
                 deleted_count = OrderItem.objects.filter(query).delete()[0]
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+        
+        
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'items': openapi.Schema(type=openapi.TYPE_STRING, description='JSON строка с элементами корзины для обновления')
+            },
+            responses={200: 'Успешное обновление количества товаров в корзине', 400: 'Ошибка обновления количества товаров в корзине', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def put(self, request: Request, *args, **kwargs):
         """
         Обновление количества товара в корзине
@@ -338,6 +447,15 @@ class PartnerUpdate(APIView):
     Класс для обновления информации о партнере
     """
 
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'url': openapi.Schema(type=openapi.TYPE_STRING, description='URL для обновления прайса')
+            },
+            responses={200: 'Успешное обновление прайса', 400: 'Ошибка обновления прайса', 403: 'Неавторизованный пользователь'}
+        ),
+    )   
     def post(self, request: Request, *args, **kwargs):
         """
         Обновление прайса от поставщика
@@ -368,6 +486,9 @@ class PartnerState(APIView):
     Класс для управления статусом партнера
     """
 
+    @swagger_auto_schema(
+        responses={200: ShopSerializer, 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение статуса партнера
@@ -393,6 +514,15 @@ class PartnerState(APIView):
             serializer = ShopSerializer(shop)
             return Response(serializer.data)
         
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'state': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус партнера')
+            },
+            responses={200: 'Успешное обновление статуса партнера', 400: 'Ошибка обновления статуса партнера', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Обновление статуса партнера
@@ -427,6 +557,9 @@ class PartnerOrders(APIView):
     Класс для получения заказов партнера
     """
 
+    @swagger_auto_schema(
+        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение заказов партнера
@@ -461,6 +594,9 @@ class ContactView(APIView):
     Класс для работы с контактами
     """
 
+    @swagger_auto_schema(
+        responses={200: ContactSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение контактов пользователя
@@ -479,6 +615,10 @@ class ContactView(APIView):
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(
+        request_body=ContactSerializer,
+        responses={200: 'Успешное добавление контакта', 400: 'Ошибка добавления контакта', 403: 'Неавторизованный пользователь'}
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Добавление новой контактной информации
@@ -505,6 +645,11 @@ class ContactView(APIView):
                 return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
     
+    
+    @swagger_auto_schema(
+        request_body=ContactSerializer,
+        responses={200: 'Успешное обновление контактной информации', 400: 'Ошибка обновления контактной информации', 403: 'Неавторизованный пользователь'}
+    )
     def put(self, request: Request, *args, **kwargs):
         """
         Обновление контактной информации
@@ -530,7 +675,16 @@ class ContactView(APIView):
                     else:
                         return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID контактов для удаления')
+            },
+            responses={200: 'Успешное удаление контактов', 400: 'Ошибка удаления контактов', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def delete(self, request: Request, *args, **kwargs):
         """
         Удаление контактной информации
@@ -565,6 +719,9 @@ class OrderView(APIView):
     Класс для работы с заказами
     """
 
+    @swagger_auto_schema(
+        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, *args, **kwargs):
         """
         Получение заказов пользователя
@@ -579,6 +736,16 @@ class OrderView(APIView):
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
     
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID корзины'),
+                'contact': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID контакта')
+            },
+            responses={200: 'Успешное размещение заказа', 400: 'Ошибка размещения заказа', 403: 'Неавторизованный пользователь'}
+        ),
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Размещение заказа из корзины
@@ -605,6 +772,26 @@ class SendEmailView(APIView):
     Класс для отправки электронной почты
     """
 
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'recipient_list': openapi.Schema(
+                    type=openapi.TYPE_ARRAY,  # Указываем, что это массив
+                    items=openapi.Schema(type=openapi.TYPE_STRING),  # Тип элементов массива (строки)
+                    description='Список получателей'
+                ),
+                'subject': openapi.Schema(type=openapi.TYPE_STRING, description='Тема письма'),
+                'message': openapi.Schema(type=openapi.TYPE_STRING, description='Текст письма'),
+                'from_email': openapi.Schema(type=openapi.TYPE_STRING, description='Email отправителя'),
+            },
+        ),
+        responses={
+            200: 'Успешное отправление электронной почты',
+            400: 'Ошибка отправления электронной почты',
+            403: 'Неавторизованный пользователь'
+        }
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Отправка электронной почты с использованием Celery
@@ -633,6 +820,9 @@ class TaskStatusView(APIView):
     Класс для получения статуса задачи
     """
 
+    @swagger_auto_schema(
+        responses={200: 'Успешное получение статуса задачи', 403: 'Неавторизованный пользователь'}
+    )
     def get(self, request: Request, task_id: str, *args, **kwargs):
         """
         Получение статуса задачи
@@ -653,4 +843,4 @@ class TaskStatusView(APIView):
             'task_result': task_result.result
         }
         return JsonResponse(result)
-
+        
