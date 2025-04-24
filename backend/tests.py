@@ -1,3 +1,324 @@
 from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from rest_framework.test import APIClient
+from rest_framework import status
+from backend.models import Shop, Product, ProductInfo, Order, OrderItem, Contact, Category
 
-# Create your tests here.
+User = get_user_model()
+
+
+class UserRegistrationTestCase(TestCase):
+    """
+    Тестирование регистрации пользователя
+    """
+
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.url = reverse('user-register')
+
+    def test_user_registration(self):
+        """
+        Тестирование регистрации пользователя
+        """
+        data = {
+            'first_name': 'Nik',
+            'last_name': 'Sav',
+            'email': 'niksav@gmail.com',
+            'password': 'very_strong_password',
+            'company': 'Google',
+            'position': 'Software Engineer'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email=data['email']).exists())
+
+    def test_user_registration_invalid_password(self):
+        """
+        Тестирование регистрации пользователя с недостаточно сложным паролем
+        """
+        data = {
+            'first_name': 'Nik',
+            'last_name': 'Sav',
+            'email': 'niksav@gmail.com',
+            'password': 'foo',
+            'company': 'Google',
+            'position': 'Software Engineer'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Error", response.data)
+        self.assertFalse(User.objects.filter(email=data['email']).exists())
+
+    def test_user_registration_invalid_email(self):
+        """
+        Тестирование регистрации пользователя с неправильным адресом электронной почты
+        """
+        data = {
+            'first_name': 'Nik',
+            'last_name': 'Sav',
+            'email': 'niksavgmail.com',
+            'password': 'very_strong_password',
+            'company': 'Google',
+            'position': 'Software Engineer'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Error", response.data)
+        self.assertFalse(User.objects.filter(email=data['email']).exists())
+
+
+class UserLoginTestCase(TestCase):
+    """
+    Тестирование авторизации пользователя
+    """
+
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.url = reverse('user-login')
+        self.user = User.objects.create_user(
+            email='niksav@gmail.com',
+            password='very_strong_password',
+            first_name='Nik',
+            last_name='Sav',
+            company='Google',
+            position='Software Engineer'
+        )
+
+    def test_user_login(self):
+        """
+        Тестирование авторизации пользователя
+        """
+        data = {
+            'email': 'niksav@gmail.com',
+            'password': 'very_strong_password'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Token", response.data)
+
+    def test_user_login_invalid_password(self):
+        """
+        Тестирование авторизации пользователя с неправильным паролем
+        """
+        data = {
+            'email': 'niksav@gmail.com',
+            'password': 'foo'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Error", response.data)
+
+
+class ProductImportTestCase(TestCase):
+    """
+    Тестирование импорта товаров
+    """
+
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.url = reverse('backend:partner-update')
+        self.user = User.objects.create_user(
+            email='shop@gmail.com',
+            password='very_strong_password',
+            first_name='Shop',
+            last_name='Shoper',
+            company='ShopCompany',
+            position='Owner',
+            user_type='shop'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_product_import(self):
+        """
+        Тестирование успешного импорта товаров
+        """
+        data = {
+            'url': 'https://example.com/shop1.yaml'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Status", response.data)
+        self.assertTrue(Shop.objects.filter(name='Связной').exists())
+        self.assertTrue(Category.objects.filter(name='Смартфоны').exists())
+        self.assertTrue(Product.objects.filter(name='Смартфон Apple iPhone XS Max 512GB (золотистый)').exists())
+        self.assertTrue(ProductInfo.objects.filter(model='apple/iphone/xs-max').exists())
+
+    def test_product_import_invalid_url(self):
+        """
+        Тестирование импорта товаров с неправильным URL
+        """
+        data = {
+            'url': 'invalid_url'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Error", response.data)
+
+
+class OrderTestCase(TestCase):
+    """
+    Тестирование заказа
+    """
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.url = reverse('backend:order')
+        self.user = User.objects.create_user(
+            email='buyer@gmail.com',
+            password='very_strong_password',
+            first_name='Buyer',
+            last_name='Buyer',
+            company='BuyerCompany',
+            position='Buyer',
+        )
+        self.client.force_authenticate(user=self.user)
+
+        # Создаем магазин, категорию, продукт и информацию о продукте
+        self.shop = Shop.objects.create(name='Связной', url='https://shop1.com', user=self.user)
+        self.category = Category.objects.create(name='Смартфоны')
+        self.category.shops.add(self.shop)
+        self.product = Product.objects.create(name='Смартфон Apple iPhone XS Max 512GB (золотистый)', category=self.category)
+        self.product_info = ProductInfo.objects.create(
+            model='apple/iphone/xs-max',
+            external_id=4216292,
+            product=self.product,
+            shop=self.shop,
+            quantity=10,
+            price=110000,
+            price_rrc=120000
+        )
+
+        # Создаем контактную информацию для пользователя
+        self.contact = Contact.objects.create(
+            user=self.user,
+            city='Москва',
+            street='Улица Ленина',
+            house='1',
+            phone='1234567890'
+        )
+
+        # Создаем заказ и элемент заказа
+        self.order = Order.objects.create(user=self.user, state='basket')
+        self.order_item = OrderItem.objects.create(order=self.order, product_info=self.product_info, quantity=2)
+
+    def test_create_order(self):
+        """
+        Тестирование создания заказа
+        """
+        data = {
+            'id': self.order.id,
+            'contact': self.contact.id,
+        }
+        response = self.client.post(self.url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Status", response.data)
+        updated_order = Order.objects.get(id=self.order.id)
+        self.assertEqual(updated_order.state, 'new')
+
+    def test_create_order_invalid_data(self):
+        """
+        Тестирование создания заказа с неправильными данными
+        """
+        data = {
+            'id': self.order.id,
+            'contact': 111111111,
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Error", response.data)
+        updated_order = Order.objects.get(id=self.order.id)
+        self.assertEqual(updated_order.state, 'basket')
+
+
+class BasketTestCase(TestCase):
+    """
+    Тестирование корзины
+    """
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.url = reverse('backend:basket')
+        self.user = User.objects.create_user(
+            email='buyer@gmail.com',
+            password='very_strong_password',
+            first_name='Buyer',
+            last_name='Buyer',
+            company='BuyerCompany',
+            position='Buyer',
+        )
+        self.client.force_authenticate(user=self.user)
+
+        # Создаем магазин, категорию, продукт и информацию о продукте
+        self.shop = Shop.objects.create(name='Связной', url='https://shop1.com', user=self.user)
+        self.category = Category.objects.create(name='Смартфоны')
+        self.category.shops.add(self.shop)
+        self.product = Product.objects.create(name='Смартфон Apple iPhone XS Max 512GB (золотистый)', category=self.category)
+        self.product_info = ProductInfo.objects.create(
+            model='apple/iphone/xs-max',
+            external_id=4216292,
+            product=self.product,
+            shop=self.shop,
+            quantity=10,
+            price=110000,
+            price_rrc=120000
+        )
+
+    def test_add_to_basket(self):
+        """
+        Тестирование добавления товара в корзину
+        """
+        data = {
+            'items': [{'product_info': self.product_info.id, 'quantity': 2}]
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('Создано объектов', response.data)
+        self.assertEqual(response.data['Создано объектов'], 1)
+        self.assertTrue(OrderItem.objects.filter(order__user=self.user, product_info=self.product_info).exists())
+
+    def test_update_basket(self):
+        """
+        Тестирование обновления количества товара в корзине
+        """
+        order = Order.objects.create(user=self.user, state='basket')
+        order_item = OrderItem.objects.create(order=order, product_info=self.product_info, quantity=2)
+
+        data = {
+            'items': [{'id': order_item.id, 'quantity': 3}]
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('Обновлено объектов', response.data)
+        self.assertEqual(response.data['Обновлено объектов'], 1)
+        updated_order_item = OrderItem.objects.get(id=order_item.id)
+        self.assertEqual(updated_order_item.quantity, 3)
+
+    def test_delete_from_basket(self):
+        """
+        Тестирование удаления товара из корзины
+        """
+        order = Order.objects.create(user=self.user, state='basket')
+        order_item = OrderItem.objects.create(order=order, product_info=self.product_info, quantity=2)
+
+        data = {
+            'items': str(order_item.id)
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('Удалено объектов', response.data)
+        self.assertEqual(response.data['Удалено объектов'], 1)
+        self.assertFalse(OrderItem.objects.filter(id=order_item.id).exists())

@@ -9,8 +9,10 @@ from rest_framework.request import Request
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from backend.serializers import UserSerializer
-from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, ProductParameter, Contact, User
-from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, OrderSerializer, ContactSerializer
+from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, \
+    ProductParameter, Contact, User
+from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
+    OrderSerializer, ContactSerializer
 from backend.utils import string_to_bool
 from backend.signals import new_order
 from celery.result import AsyncResult
@@ -23,12 +25,11 @@ class RegisterAccount(APIView):
     """
     Класс для регистрации пользователя
     """
-    
+
     @swagger_auto_schema(
         request_body=UserSerializer,
         responses={200: 'Успешная регистрация', 400: 'Ошибка валидации'}
     )
-    
     def post(self, request: Request, *args, **kwargs):
         """
         Регистрация нового пользователя
@@ -52,7 +53,7 @@ class RegisterAccount(APIView):
                     error_array.append(p_error)
                 return JsonResponse({'Status': False, 'Errors': error_array})
             else:
-                #проверка уникальности имени пользователя
+                # проверка уникальности имени пользователя
                 user_serializer = UserSerializer(data=request.data)
                 if user_serializer.is_valid():
                     # создаём пользователя
@@ -69,7 +70,7 @@ class ConfirmAccount(APIView):
     """
     Класс для подтверждения аккаунта
     """
-    
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -95,7 +96,8 @@ class ConfirmAccount(APIView):
 
         # Проверка обязательных полей
         if {'email', 'token'}.issubset(request.data):
-            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'], key=request.data['token']).first()
+            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
+                                                     key=request.data['token']).first()
             if token:
                 token.user.is_active = True
                 token.user.save()
@@ -104,17 +106,16 @@ class ConfirmAccount(APIView):
             else:
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
 
 class AccountDetails(APIView):
     """
     Класс для получения и обновления данных аккаунта пользователя
     """
-    
+
     @swagger_auto_schema(
         responses={200: UserSerializer, 403: 'Неавторизованный пользователь'}
     )
-    
     def get(self, request: Request, *args, **kwargs):
         """
         Получение данных аккаунта пользователя
@@ -130,7 +131,7 @@ class AccountDetails(APIView):
 
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         # Проверка наличия обязательных полей
         if 'password' in request.data:
             # Проверка пароля на сложность
@@ -143,7 +144,7 @@ class AccountDetails(APIView):
                 return JsonResponse({'Status': False, 'Errors': error_array})
             else:
                 request.user.set_password(request.data['password'])
-        
+
         # Проверка наличия остальных обязательных полей
         user_serializer = UserSerializer(request.user, data=request.data, partial=True)
         if user_serializer.is_valid():
@@ -151,13 +152,13 @@ class AccountDetails(APIView):
             return JsonResponse({'Status': True})
         else:
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
-        
+
 
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователя
     """
-    
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -193,7 +194,7 @@ class LoginAccount(APIView):
                 pass
             return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-        
+
 
 class CategoryView(ListAPIView):
     """
@@ -201,7 +202,7 @@ class CategoryView(ListAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    
+
     @swagger_auto_schema(
         responses={200: CategorySerializer(many=True), 403: 'Неавторизованный пользователь'}
     )
@@ -226,7 +227,7 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
-    
+
     @swagger_auto_schema(
         responses={200: ShopSerializer(many=True), 403: 'Неавторизованный пользователь'}
     )
@@ -249,11 +250,13 @@ class ProductInfoView(APIView):
     """
     Класс для получения информации о продукте
     """
-    
+
     @swagger_auto_schema(
         manual_parameters=[
-            openapi.Parameter('shop_id', openapi.IN_QUERY, description='ID магазина', required=False, type=openapi.TYPE_INTEGER),
-            openapi.Parameter('category_id', openapi.IN_QUERY, description='ID категории', required=False, type=openapi.TYPE_INTEGER)
+            openapi.Parameter('shop_id', openapi.IN_QUERY, description='ID магазина', required=False,
+                              type=openapi.TYPE_INTEGER),
+            openapi.Parameter('category_id', openapi.IN_QUERY, description='ID категории', required=False,
+                              type=openapi.TYPE_INTEGER)
         ],
         responses={200: ProductInfoSerializer(many=True), 403: 'Неавторизованный пользователь'}
     )
@@ -275,7 +278,7 @@ class ProductInfoView(APIView):
 
         if shop_id:
             query = query & Q(shop_id=shop_id)
-        
+
         if category_id:
             query = query & Q(category_id=category_id)
 
@@ -283,17 +286,17 @@ class ProductInfoView(APIView):
         queryset = ProductInfo.objects.filter(query).select_related(
             'shop', 'product__category').prefetch_related(
             'product_parameters__parameter').distinct()
-        
+
         # Сериализуем данные
         serializer = ProductInfoSerializer(queryset, many=True)
         return Response(serializer.data)
-        
+
 
 class BasketView(APIView):
     """
     Класс для работы с корзиной
     """
-    
+
     @swagger_auto_schema(
         responses={200: OrderItemSerializer(many=True), 403: 'Неавторизованный пользователь'}
     )
@@ -311,24 +314,25 @@ class BasketView(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         basket = Order.objects.filter(
             user_id=request.user.id, status='basket').prefetch_related(
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
-        
+
         # Сериализуем данные
         serializer = OrderItemSerializer(basket, many=True)
         return Response(serializer.data)
-        
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
                 'items': openapi.Schema(type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины')
             },
-            responses={200: 'Успешное добавление товаров в корзину', 400: 'Ошибка добавления товаров в корзину', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное добавление товаров в корзину', 400: 'Ошибка добавления товаров в корзину',
+                       403: 'Неавторизованный пользователь'}
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -337,7 +341,7 @@ class BasketView(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         items_ids = request.data.get('items')
         if items_ids:
             try:
@@ -360,15 +364,16 @@ class BasketView(APIView):
                         return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-            
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
                 'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID товаров для удаления')
             },
-            responses={200: 'Успешное удаление товаров из корзины', 400: 'Ошибка удаления товаров из корзины', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное удаление товаров из корзины', 400: 'Ошибка удаления товаров из корзины',
+                       403: 'Неавторизованный пользователь'}
         ),
     )
     def delete(self, request: Request, *args, **kwargs):
@@ -385,7 +390,7 @@ class BasketView(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         items_ids = request.data.get('items')
         if items_ids:
             items_list = items_ids.split(',')
@@ -400,15 +405,16 @@ class BasketView(APIView):
                 deleted_count = OrderItem.objects.filter(query).delete()[0]
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-        
-        
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'items': openapi.Schema(type=openapi.TYPE_STRING, description='JSON строка с элементами корзины для обновления')
+                'items': openapi.Schema(type=openapi.TYPE_STRING,
+                                        description='JSON строка с элементами корзины для обновления')
             },
-            responses={200: 'Успешное обновление количества товаров в корзине', 400: 'Ошибка обновления количества товаров в корзине', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное обновление количества товаров в корзине',
+                       400: 'Ошибка обновления количества товаров в корзине', 403: 'Неавторизованный пользователь'}
         ),
     )
     def put(self, request: Request, *args, **kwargs):
@@ -425,7 +431,7 @@ class BasketView(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         items_ids = request.data.get('items')
         if items_ids:
             try:
@@ -437,7 +443,8 @@ class BasketView(APIView):
                 objects_updated = 0
                 for order_item in items_dict:
                     if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(quantity=order_item['quantity'])
+                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
+                            quantity=order_item['quantity'])
                 return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -453,9 +460,10 @@ class PartnerUpdate(APIView):
             properties={
                 'url': openapi.Schema(type=openapi.TYPE_STRING, description='URL для обновления прайса')
             },
-            responses={200: 'Успешное обновление прайса', 400: 'Ошибка обновления прайса', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное обновление прайса', 400: 'Ошибка обновления прайса',
+                       403: 'Неавторизованный пользователь'}
         ),
-    )   
+    )
     def post(self, request: Request, *args, **kwargs):
         """
         Обновление прайса от поставщика
@@ -470,16 +478,16 @@ class PartnerUpdate(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-        
+
         url = request.data.get('url')
         if url:
             task = do_import.delay(url)
             return JsonResponse({'Status': True, 'Task': str(task), 'Task ID': task.id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
 
 class PartnerState(APIView):
     """
@@ -503,24 +511,25 @@ class PartnerState(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-        
+
         shop = request.user.shop
         if not shop:
             return JsonResponse({'Status': False, 'Error': 'Магазин не найден'}, status=404)
         else:
             serializer = ShopSerializer(shop)
             return Response(serializer.data)
-        
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
                 'state': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус партнера')
             },
-            responses={200: 'Успешное обновление статуса партнера', 400: 'Ошибка обновления статуса партнера', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное обновление статуса партнера', 400: 'Ошибка обновления статуса партнера',
+                       403: 'Неавторизованный пользователь'}
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -537,10 +546,10 @@ class PartnerState(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-        
+
         state = request.data.get('state')
         if state:
             try:
@@ -548,9 +557,9 @@ class PartnerState(APIView):
                 return JsonResponse({'Status': True})
             except ValueError as e:
                 return JsonResponse({'Status': False, 'Errors': str(e)})
-        
+
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
 
 class PartnerOrders(APIView):
     """
@@ -574,16 +583,16 @@ class PartnerOrders(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-        
+
         order = Order.objects.filter(
             ordered_items__product_info__shop__user_id=request.user.id).exclude(status='basket').prefetch_related(
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
-        
+
         # Сериализуем данные
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
@@ -614,10 +623,11 @@ class ContactView(APIView):
         contact = Contact.objects.filter(user_id=request.user.id).all()
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
-    
+
     @swagger_auto_schema(
         request_body=ContactSerializer,
-        responses={200: 'Успешное добавление контакта', 400: 'Ошибка добавления контакта', 403: 'Неавторизованный пользователь'}
+        responses={200: 'Успешное добавление контакта', 400: 'Ошибка добавления контакта',
+                   403: 'Неавторизованный пользователь'}
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -633,7 +643,7 @@ class ContactView(APIView):
         """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        
+
         if {'city', 'street', 'phone'}.issubset(request.data):
             request.data._mutable = True
             request.data.update({'user': request.user.id})
@@ -644,11 +654,11 @@ class ContactView(APIView):
             else:
                 return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
-    
+
     @swagger_auto_schema(
         request_body=ContactSerializer,
-        responses={200: 'Успешное обновление контактной информации', 400: 'Ошибка обновления контактной информации', 403: 'Неавторизованный пользователь'}
+        responses={200: 'Успешное обновление контактной информации', 400: 'Ошибка обновления контактной информации',
+                   403: 'Неавторизованный пользователь'}
     )
     def put(self, request: Request, *args, **kwargs):
         """
@@ -682,7 +692,8 @@ class ContactView(APIView):
             properties={
                 'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID контактов для удаления')
             },
-            responses={200: 'Успешное удаление контактов', 400: 'Ошибка удаления контактов', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное удаление контактов', 400: 'Ошибка удаления контактов',
+                       403: 'Неавторизованный пользователь'}
         ),
     )
     def delete(self, request: Request, *args, **kwargs):
@@ -712,7 +723,7 @@ class ContactView(APIView):
                 deleted_count = Contact.objects.filter(query).delete()[0]
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-            
+
 
 class OrderView(APIView):
     """
@@ -735,7 +746,7 @@ class OrderView(APIView):
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
-    
+
     @swagger_auto_schema(
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -743,7 +754,8 @@ class OrderView(APIView):
                 'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID корзины'),
                 'contact': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID контакта')
             },
-            responses={200: 'Успешное размещение заказа', 400: 'Ошибка размещения заказа', 403: 'Неавторизованный пользователь'}
+            responses={200: 'Успешное размещение заказа', 400: 'Ошибка размещения заказа',
+                       403: 'Неавторизованный пользователь'}
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -813,7 +825,7 @@ class SendEmailView(APIView):
             task = send_email.delay(subject, message, from_email, recipient_list)
             return JsonResponse({'Status': True, 'Task': str(task), 'Task ID': task.id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-    
+
 
 class TaskStatusView(APIView):
     """
@@ -843,4 +855,3 @@ class TaskStatusView(APIView):
             'task_result': task_result.result
         }
         return JsonResponse(result)
-        
