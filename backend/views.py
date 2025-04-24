@@ -12,13 +12,19 @@ from backend.serializers import UserSerializer
 from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, \
     ProductParameter, Contact, User
 from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
-    OrderSerializer, ContactSerializer
+    OrderSerializer, ContactSerializer, MyTokenObtainPairSerializer
 from backend.utils import string_to_bool
 from backend.signals import new_order
 from celery.result import AsyncResult
 from backend.tasks import do_import, send_email
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 
 class RegisterAccount(APIView):
@@ -60,7 +66,10 @@ class RegisterAccount(APIView):
                     user = user_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
-                    return JsonResponse({'Status': True})
+                    refresh = RefreshToken.for_user(user)
+                    return JsonResponse({'refresh': str(refresh),
+                                         'access': str(refresh.access_token),
+                                         })
                 else:
                     return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
@@ -152,48 +161,6 @@ class AccountDetails(APIView):
             return JsonResponse({'Status': True})
         else:
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
-
-
-class LoginAccount(APIView):
-    """
-    Класс для авторизации пользователя
-    """
-
-    @swagger_auto_schema(
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email пользователя'),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль пользователя')
-            },
-            responses={200: 'Успешная авторизация', 400: 'Ошибка авторизации', 403: 'Неавторизованный пользователь'}
-        ),
-    )
-    def post(self, request: Request, *args, **kwargs):
-        """
-        Авторизация пользователя
-
-        Args:
-            request: HTTP-запрос
-            *args: Дополнительные аргументы
-            **kwargs: Дополнительные аргументы
-
-        Returns:
-            JsonResponse: JSON-ответ с результатом авторизации
-        """
-        if {'email', 'password'}.issubset(request.data):
-            try:
-                user = User.objects.get(email=request.data['email'])
-                if user.check_password(request.data['password']):
-                    if user.is_active:
-                        token, _ = Token.objects.get_or_create(user=user)
-                        return JsonResponse({'Status': True, 'Token': token.key})
-                    else:
-                        return JsonResponse({'Status': False, 'Errors': 'Аккаунт не активирован'})
-            except User.DoesNotExist:
-                pass
-            return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
 class CategoryView(ListAPIView):

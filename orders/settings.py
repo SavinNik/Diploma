@@ -42,9 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'rest_framework.authtoken',
     'django_rest_passwordreset',
     'drf_yasg',
+    'rest_framework_simplejwt',
     
     'backend',
 ]
@@ -144,9 +144,9 @@ SERVER_EMAIL = config('SERVER_EMAIL')                           # Адрес о�
 # Настройки REST Framework
 REST_FRAMEWORK = {
     # Класс аутентификации
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     # Класс рендеринга
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

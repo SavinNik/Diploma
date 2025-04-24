@@ -1,6 +1,19 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from backend.models import User, Shop, Product, ProductInfo, Category, Parameter, Order, OrderItem, Contact, \
     ProductParameter
+
+User = get_user_model()
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        return token
 
 
 class ContactSerializer(serializers.ModelSerializer):
