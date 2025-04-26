@@ -18,6 +18,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from utils import AccessMixin
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -135,7 +136,7 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class AccountDetails(APIView):
+class AccountDetails(APIView, AccessMixin):
     """
     Класс для получения и обновления данных аккаунта пользователя
     """
@@ -156,8 +157,9 @@ class AccountDetails(APIView):
             JsonResponse: JSON-ответ с данными аккаунта пользователя
         """
 
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         # Проверка наличия обязательных полей
         if 'password' in request.data:
@@ -320,7 +322,7 @@ class BasketView(APIView):
             'ordered_items__product_info__product_parameters__parameter').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
 
-        # Сериализуем данные
+        # Сериализируем данные
         serializer = OrderItemSerializer(basket, many=True)
         return Response(serializer.data)
 
@@ -517,7 +519,7 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerUpdate(APIView):
+class PartnerUpdate(APIView, AccessMixin):
     """
     Класс для обновления информации о партнере
     """
@@ -560,11 +562,9 @@ class PartnerUpdate(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления прайса от поставщика
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+        access_response = self.check_shop_access(request) and self.check_auth(request)
+        if access_response:
+            return access_response
 
         url = request.data.get('url')
         if url:
@@ -573,7 +573,7 @@ class PartnerUpdate(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerState(APIView):
+class PartnerState(APIView, AccessMixin):
     """
     Класс для управления статусом партнера
     """
@@ -593,11 +593,9 @@ class PartnerState(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом получения статуса партнера
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+        access_response = self.check_shop_access(request) and self.check_auth(request)
+        if access_response:
+            return access_response
 
         shop = request.user.shop
         if not shop:
@@ -628,11 +626,9 @@ class PartnerState(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления статуса партнера
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+        access_response = self.check_shop_access(request) and self.check_auth(request)
+        if access_response:
+            return access_response
 
         state = request.data.get('state')
         if state:
@@ -645,7 +641,7 @@ class PartnerState(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerOrders(APIView):
+class PartnerOrders(APIView, AccessMixin):
     """
     Класс для получения заказов партнера
     """
@@ -665,11 +661,9 @@ class PartnerOrders(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом получения заказов партнера
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+        access_response = self.check_shop_access(request) and self.check_auth(request)
+        if access_response:
+            return access_response
 
         order = Order.objects.filter(
             ordered_items__product_info__shop__user_id=request.user.id).exclude(status='basket').prefetch_related(
@@ -682,7 +676,7 @@ class PartnerOrders(APIView):
         return Response(serializer.data)
 
 
-class ContactView(APIView):
+class ContactView(APIView, AccessMixin):
     """
     Класс для работы с контактами
     """
@@ -706,8 +700,10 @@ class ContactView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом получения контактов пользователя
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
+
         contact = Contact.objects.filter(user_id=request.user.id).all()
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
@@ -733,8 +729,9 @@ class ContactView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом добавления контакта
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         if {'city', 'street', 'phone'}.issubset(request.data):
             request.data._mutable = True
@@ -768,8 +765,10 @@ class ContactView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления контактной информации
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
+
         if 'id' in request.data:
             if request.data['id'].isdigit():
                 contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
@@ -819,8 +818,10 @@ class ContactView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом удаления контактной информации
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
+
         items_ids = request.data.get('items')
         if items_ids:
             items_list = items_ids.split(',')
@@ -836,7 +837,7 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class OrderView(APIView):
+class OrderView(APIView, AccessMixin):
     """
     Класс для работы с заказами
     """
@@ -852,8 +853,10 @@ class OrderView(APIView):
         """
         Получение заказов пользователя
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
+
         order = Order.objects.filter(
             user_id=request.user.id).exclude(status='basket').prefetch_related(
             'ordered_items__product_info__product__category',
@@ -882,8 +885,10 @@ class OrderView(APIView):
         """
         Размещение заказа из корзины
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
+
         if {'id', 'contact'}.issubset(request.data):
             if request.data['id'].isdigit():
                 try:

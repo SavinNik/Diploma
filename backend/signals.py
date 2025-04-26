@@ -4,7 +4,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver, Signal
 from django.db.models.signals import post_save
 from django_rest_passwordreset.signals import reset_password_token_created
-from backend.models import User, ConfirmEmailToken
+from backend.models import User, ConfirmEmailToken, Order
+from backend.tasks import send_email
 
 
 # Сигналы для новых пользователей и новых заказов
@@ -54,7 +55,7 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         # Создаем токен для подтверждения email
         token, _ = ConfirmEmailToken.objects.get_or_create(user=instance)
         # Отправляем письмо с токеном для подтверждения email
-        message = EmailMultiAlternatives(
+        send_email.delay(
             # Заголовок письма
             f'Токен для подтверждения email для {instance.email}',
             # Текст письма
@@ -64,8 +65,7 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
             # Получатели
             [instance.email]
         )
-        message.send()
-        
+
 
 @receiver(new_order)
 def new_order_signal(user_id: int, *args, **kwargs):
@@ -79,8 +79,14 @@ def new_order_signal(user_id: int, *args, **kwargs):
     """
     # Получаем пользователя по ID
     user = User.objects.get(id=user_id)
-    # Отправляем письмо попользователю о новом заказе
-    message = EmailMultiAlternatives(
+    # Получаем заказ
+    order = Order.objects.filter(user_id=user_id, status='basket').first()
+    if order:
+        # Обновляем статус заказа
+        order.status = 'new'
+        order.save()
+    # Отправляем письмо пользователю о новом заказе
+    send_email.delay(
         # Заголовок письма
         f'Обновление статуса заказа',
         # Текст письма
@@ -90,5 +96,3 @@ def new_order_signal(user_id: int, *args, **kwargs):
         # Получатели
         [user.email]
     )
-    message.send()
-    

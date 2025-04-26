@@ -498,7 +498,7 @@ class BasketTestCase(TestCase):
 
         # Доступ другого пользователя
         other_user = User.objects.create_user(
-            email='other_user@gmail',
+            email='other_user@gmail.com',
             password='very_strong_password'
         )
         self.client.force_authenticate(user=other_user)

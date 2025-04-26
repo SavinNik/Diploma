@@ -201,7 +201,7 @@ class ProductInfo(models.Model):
     """
     objects = models.Manager()
     model = models.CharField(verbose_name='Модель', max_length=50, blank=True)
-    external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True, db_index=True)
+    external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True)
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')

@@ -1,3 +1,23 @@
+from django.http import JsonResponse
+
+
+class AccessMixin:
+    """
+    Миксин для проверки доступа к магазину
+    """
+    @staticmethod
+    def check_shop_access(request):
+        if request.user.user_type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+        return None
+
+    @staticmethod
+    def check_auth(request):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        return None
+
+
 def string_to_bool(value):
     """
     Convert string to boolean.
@@ -19,4 +39,3 @@ def string_to_bool(value):
     elif value.lower() in ('false', '0', 'no', 'off', 'n'):
         return False
     raise ValueError(f"Invalid boolean value: {value}")
-
