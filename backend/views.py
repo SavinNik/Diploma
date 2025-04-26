@@ -6,11 +6,9 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.request import Request
-from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from backend.serializers import UserSerializer
-from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Product, Parameter, \
-    ProductParameter, Contact, User
+from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Contact
 from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
     OrderSerializer, ContactSerializer, MyTokenObtainPairSerializer
 from backend.utils import string_to_bool
@@ -33,8 +31,22 @@ class RegisterAccount(APIView):
     """
 
     @swagger_auto_schema(
+        operation_description="Регистрация нового пользователя",
         request_body=UserSerializer,
-        responses={200: 'Успешная регистрация', 400: 'Ошибка валидации'}
+        responses={
+            201: openapi.Response(
+                description="Успешная регистрация",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='Refresh-токен'),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING, description='Access-токен'),
+                    },
+                )
+            ),
+            400: 'Ошибка регистрации',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -81,14 +93,21 @@ class ConfirmAccount(APIView):
     """
 
     @swagger_auto_schema(
+        operation_description="Подтверждение почтового адреса",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['email', 'token'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email пользователя'),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL,
+                                        description='Почтовый адрес'),
                 'token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен подтверждения')
-            },
+            }
         ),
-        responses={200: 'Успешное подтверждение', 400: 'Ошибка подтверждения'}
+        responses={
+            200: 'Email успешно подтвержден',
+            400: 'Неправильно указан email или token',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -171,7 +190,9 @@ class CategoryView(ListAPIView):
     serializer_class = CategorySerializer
 
     @swagger_auto_schema(
-        responses={200: CategorySerializer(many=True), 403: 'Неавторизованный пользователь'}
+        operation_description="Получение списка категорий",
+        responses={200: CategorySerializer(many=True),
+                   403: 'Неавторизованный пользователь'}
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -219,13 +240,21 @@ class ProductInfoView(APIView):
     """
 
     @swagger_auto_schema(
+        operation_description="Получение информации о продукте с фильтрацией",
         manual_parameters=[
-            openapi.Parameter('shop_id', openapi.IN_QUERY, description='ID магазина', required=False,
+            openapi.Parameter('shop_id', openapi.IN_QUERY,
+                              description='ID магазина',
+                              required=False,
                               type=openapi.TYPE_INTEGER),
-            openapi.Parameter('category_id', openapi.IN_QUERY, description='ID категории', required=False,
+            openapi.Parameter('category_id', openapi.IN_QUERY,
+                              description='ID категории',
+                              required=False,
                               type=openapi.TYPE_INTEGER)
         ],
-        responses={200: ProductInfoSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        responses={
+            200: ProductInfoSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        }
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -265,7 +294,11 @@ class BasketView(APIView):
     """
 
     @swagger_auto_schema(
-        responses={200: OrderItemSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        operation_description="Получение корзины пользователя",
+        responses={
+            200: OrderItemSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        }
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -293,13 +326,41 @@ class BasketView(APIView):
         return Response(serializer.data)
 
     @swagger_auto_schema(
+        operation_description="Добавление товаров в корзину",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['items'],
             properties={
-                'items': openapi.Schema(type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины')
+                'items': openapi.Schema(
+                    type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины',
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'product_info': openapi.Schema(
+                                type=openapi.TYPE_INTEGER, description='ID продукта'
+                            ),
+                            'quantity': openapi.Schema(
+                                type=openapi.TYPE_INTEGER, description='Количество'
+                            )
+                        }
+                    ),
+                )
             },
-            responses={200: 'Успешное добавление товаров в корзину', 400: 'Ошибка добавления товаров в корзину',
-                       403: 'Неавторизованный пользователь'}
+            responses={
+                200: openapi.Response(
+                    description='Товары успешно добавлены в корзину',
+                    schema=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                            'Создано объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                                               description='Количество созданных объектов')
+                        }
+                    )
+                ),
+                400: 'Ошибка добавления товаров в корзину',
+                403: 'Неавторизованный пользователь'
+            }
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -334,14 +395,31 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     @swagger_auto_schema(
+        operation_description="Удаление товара из корзины",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['items'],
             properties={
-                'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID товаров для удаления')
+                'items': openapi.Schema(
+                    type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины',
+                )
             },
-            responses={200: 'Успешное удаление товаров из корзины', 400: 'Ошибка удаления товаров из корзины',
-                       403: 'Неавторизованный пользователь'}
         ),
+        responses={
+            200: openapi.Response(
+                description='Товары успешно удалены из корзины',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Удалено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                                           description='Количество удаленных объектов')
+                    }
+                )
+            ),
+            400: 'Ошибка удаления товаров из корзины',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def delete(self, request: Request, *args, **kwargs):
         """
@@ -374,15 +452,39 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     @swagger_auto_schema(
+        operation_description="Обновление количества товара в корзине",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['items'],
             properties={
-                'items': openapi.Schema(type=openapi.TYPE_STRING,
-                                        description='JSON строка с элементами корзины для обновления')
-            },
-            responses={200: 'Успешное обновление количества товаров в корзине',
-                       400: 'Ошибка обновления количества товаров в корзине', 403: 'Неавторизованный пользователь'}
+                'items': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='JSON строка с элементами корзины для обновления',
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID товара'),
+                            'quantity': openapi.Schema(type=openapi.TYPE_INTEGER, description='Новое количество товара')
+                        }
+                    )
+                )
+            }
         ),
+        responses={
+            200: openapi.Response(
+                description='Успешное обновление количества товаров в корзине',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Обновлено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                                             description='Количество обновленных объектов')
+                    }
+                )
+            ),
+            400: 'Ошибка обновления количества товаров в корзине',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def put(self, request: Request, *args, **kwargs):
         """
@@ -422,14 +524,30 @@ class PartnerUpdate(APIView):
     """
 
     @swagger_auto_schema(
+        operation_description='Получение информации о партнере',
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['url'],
             properties={
-                'url': openapi.Schema(type=openapi.TYPE_STRING, description='URL для обновления прайса')
-            },
-            responses={200: 'Успешное обновление прайса', 400: 'Ошибка обновления прайса',
-                       403: 'Неавторизованный пользователь'}
+                'url': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI,
+                                      description='URL для обновления прайса')
+            }
         ),
+        responses={
+            200: openapi.Response(
+                description='Задача на обновление прайса успешно создана',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Task': openapi.Schema(type=openapi.TYPE_STRING, description='ID задачи'),
+                        'Task ID': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID задачи')
+                    }
+                )
+            ),
+            400: 'Неверный URL',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -571,7 +689,11 @@ class ContactView(APIView):
     """
 
     @swagger_auto_schema(
-        responses={200: ContactSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        operation_description='Получение контактов пользователя',
+        responses={
+            200: ContactSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        }
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -592,9 +714,13 @@ class ContactView(APIView):
         return Response(serializer.data)
 
     @swagger_auto_schema(
+        operation_description='Добавление контактной информации',
         request_body=ContactSerializer,
-        responses={200: 'Успешное добавление контакта', 400: 'Ошибка добавления контакта',
-                   403: 'Неавторизованный пользователь'}
+        responses={
+            200: 'Успешное добавление контакта',
+            400: 'Ошибка добавления контакта',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -623,9 +749,13 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     @swagger_auto_schema(
+        operation_description='Обновление контактной информации',
         request_body=ContactSerializer,
-        responses={200: 'Успешное обновление контактной информации', 400: 'Ошибка обновления контактной информации',
-                   403: 'Неавторизованный пользователь'}
+        responses={
+            200: 'Успешное обновление контактной информации',
+            400: 'Ошибка обновления контактной информации',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def put(self, request: Request, *args, **kwargs):
         """
@@ -654,14 +784,29 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     @swagger_auto_schema(
+        operation_description='Удаление контактной информации',
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['items'],
             properties={
                 'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID контактов для удаления')
             },
-            responses={200: 'Успешное удаление контактов', 400: 'Ошибка удаления контактов',
-                       403: 'Неавторизованный пользователь'}
         ),
+        responses={
+            200: openapi.Response(
+                description='Контактная информация успешно удалена',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Удалено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
+                                                           description='Количество удаленных объектов')
+                    }
+                )
+            ),
+            400: 'Ошибка удаления контактов',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def delete(self, request: Request, *args, **kwargs):
         """
@@ -698,7 +843,11 @@ class OrderView(APIView):
     """
 
     @swagger_auto_schema(
-        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        operation_description='Получение заказов пользователя',
+        responses={
+            200: OrderSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        }
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -715,15 +864,20 @@ class OrderView(APIView):
         return Response(serializer.data)
 
     @swagger_auto_schema(
+        operation_description='Размещение заказа из корзины',
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
+            required=['id', 'contact'],
             properties={
                 'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID корзины'),
                 'contact': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID контакта')
-            },
-            responses={200: 'Успешное размещение заказа', 400: 'Ошибка размещения заказа',
-                       403: 'Неавторизованный пользователь'}
+            }
         ),
+        responses={
+            200: 'Заказ успешно размещен',
+            400: 'Ошибка размещения заказа',
+            403: 'Неавторизованный пользователь'
+        }
     )
     def post(self, request: Request, *args, **kwargs):
         """

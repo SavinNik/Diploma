@@ -172,7 +172,6 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут
 CELERY_BROKER_CONNECTION_MAX_RETRIES = 5
 CELERY_BROKER_CONNECTION_RETRY = True
 
@@ -184,6 +183,26 @@ SWAGGER_SETTINGS = {
     },
     'USE_SESSION_AUTH': False,
     'DOC_EXPANSION': 'none',
+}
+
+
+# Настройки логирования
+LOGGING = {
+    'version': 1,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
 }
 
 

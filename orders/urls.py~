@@ -30,7 +30,7 @@ schema_view = get_schema_view(
     openapi.Info(
         title="API для сервиса по автоматизации закупок",
         default_version='v1',
-        description="Документация для API сервиса по автоматизации закупок:",
+        description="Документация для API сервиса по автоматизации закупок",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="nikolus55@yandex.ru"),
         license=openapi.License(name="MIT License"),
