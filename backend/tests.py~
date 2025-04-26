@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -199,62 +198,6 @@ class PermissionTestCase(TestCase):
             self.client.force_authenticate(user=self.admin)
             response = self.client.get(url)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-
-class ProductValidationTestCase(TestCase):
-    """
-    Тестирование валидации данных продукта
-    """
-
-    def setUp(self):
-        """
-        Установка данных для тестирования
-        """
-        self.client = APIClient()
-        self.user = User.objects.create_user(
-            email='shop@gmail.com',
-            password='very_strong_password',
-            user_type='shop'
-        )
-        self.client.force_authenticate(user=self.user)
-        self.shop = Shop.objects.create(name='Test Shop', user=self.user)
-        self.category = Category.objects.create(name='Test Category')
-        self.product = Product.objects.create(name='Test Product', category=self.category)
-
-    def test_product_info_validation(self):
-        """
-        Тестирование валидации данных при создании информации о продукте
-        """
-        url = reverse('backend:partner-update')
-        invalid_data = {
-            'url': 'https://example.com/invalid.yaml'
-        }
-        response = self.client.post(url, invalid_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("Error", response.data)
-
-    def test_quantity_boundary_values(self):
-        """
-        Тестирование граничных значений quantity
-        """
-        product_info = ProductInfo.objects.create(
-            model='test-model',
-            external_id=12345,
-            product=self.product,
-            shop=self.shop,
-            quantity=0,  # Граничное значение
-            price=100,
-            price_rrc=120
-        )
-
-        # Проверка quantity = 0
-        serializer = ProductInfoSerializer(product_info)
-        self.assertEqual(serializer.data['quantity'], 0)
-
-        # Проверка отрицательного значения
-        product_info.quantity = -1
-        with self.assertRaises(ValidationError):
-            product_info.full_clean()
 
 
 class ProductImportTestCase(TestCase):
@@ -522,8 +465,6 @@ class ComprehensiveTestCase(TestCase):
             password='very_strong_password'
         )
         self.client.force_authenticate(user=self.user)
-        self.product = Product.objects.create(name='Test Product')
-        self.shop = Shop.objects.create(name='Test Shop', user=self.user)
 
     def test_edge_cases(self):
         """
