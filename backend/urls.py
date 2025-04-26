@@ -2,7 +2,7 @@ from django.urls import path
 from django_rest_passwordreset.views import reset_password_request_token, reset_password_confirm
 
 from backend.views import PartnerUpdate, PartnerState, PartnerOrders, RegisterAccount, ConfirmAccount, \
-    AccountDetails, LoginAccount, CategoryView, ShopView, ProductInfoView, BasketView, OrderView, ContactView, \
+    AccountDetails, CategoryView, ShopView, ProductInfoView, BasketView, OrderView, ContactView, \
     MyTokenObtainPairView
 
 app_name = 'backend'
