@@ -198,6 +198,12 @@ SWAGGER_SETTINGS = {
 # Настройки логирования
 LOGGING = {
     'version': 1,
+    'formatters': {
+        'verbose': {
+        'format': '{levelname} {asctime} {module} {message}',
+        'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'DEBUG',

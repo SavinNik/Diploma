@@ -1,5 +1,6 @@
 import logging
 from celery import shared_task
+from celery.exceptions import Retry
 from django.core.mail import EmailMultiAlternatives
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
@@ -28,70 +29,101 @@ def send_email(subject, message, from_email, recipient_list):
     msg.send()
 
 
-@shared_task
-def do_import(url):
+@shared_task(bind=True, max_retries=3)
+def do_import(self, url):
     """
     Импорт данных из YAML-файла
 
-        Args:
-            url: URL-адрес YAML-файла
-        """
+    Args:
+        self: Экземпляр задачи Celery
+        url: URL-адрес YAML-файла
+    """
     try:
-        if url:
-            validate_url = URLValidator()
-            try:
-                validate_url(url)
-            except ValidationError as e:
-                return {'Status': False, 'Error': str(e)}
-            else:
-                stream = get(url).content
-                data = load_yaml(stream, Loader=Loader)
+        if not url:
+            raise ValueError("URL не указан")
 
-                user = User.objects.get(id=data['user_id'], user_type='shop')
-                shop, _ = Shop.objects.get_or_create(
-                    name=data['shop'],
-                    user=user
+        # Валидация URL
+        validate_url = URLValidator()
+        try:
+            validate_url(url)
+        except ValidationError as e:
+            raise ValueError(f"Неверный URL: {str(e)}")
+
+        # Получение данных
+        response = get(url)
+        if response.status_code != 200:
+            raise ConnectionError(f"Ошибка при получении данных: {response.status_code}")
+
+        stream = response.content
+        data = load_yaml(stream, Loader=Loader)
+
+        # Проверка наличия необходимых данных
+        required_fields = ['user_id', 'shop', 'categories', 'goods']
+        for field in required_fields:
+            if field not in data:
+                raise KeyError(f"Отсутствует обязательное поле: {field}")
+
+        user = User.objects.get(id=data['user_id'], user_type='shop')
+        shop, _ = Shop.objects.get_or_create(
+            name=data['shop'],
+            user=user
+        )
+
+        # Обработка категорий
+        for category in data['categories']:
+            category_object, _ = Category.objects.get_or_create(
+                id=category['id'],
+                name=category['name']
+            )
+            category_object.shops.add(shop.id)
+            category_object.save()
+
+        # Очистка старых данных
+        ProductInfo.objects.filter(shop_id=shop.id).delete()
+
+        # Импорт товаров
+        for item in data['goods']:
+            product, _ = Product.objects.get_or_create(
+                name=item['name'],
+                category_id=item['category_id']
+            )
+
+            product_info = ProductInfo.objects.create(
+                product_id=product.id,
+                shop_id=shop.id,
+                model=item['model'],
+                quantity=item['quantity'],
+                price=item['price'],
+                price_rrc=item['price_rrc'],
+                external_id=item['id']
+            )
+
+            # Обработка параметров товара
+            for name, value in item['parameters'].items():
+                parameter, _ = Parameter.objects.get_or_create(name=name)
+
+                ProductParameter.objects.create(
+                    product_info_id=product_info.id,
+                    parameter_id=parameter.id,
+                    value=value
                 )
 
-                for category in data['categories']:
-                    category_object, _ = Category.objects.get_or_create(
-                        id=category['id'],
-                        name=category['name']
-                    )
-                    category_object.shops.add(shop.id)
-                    category_object.save()
-
-                ProductInfo.objects.filter(shop_id=shop.id).delete()
-
-                for item in data['goods']:
-                    product, _ = Product.objects.get_or_create(
-                        name=item['name'],
-                        category_id=item['category_id']
-                    )
-
-                    product_info = ProductInfo.objects.create(
-                        product_id=product.id,
-                        shop_id=shop.id,
-                        model=item['model'],
-                        quantity=item['quantity'],
-                        price=item['price'],
-                        price_rrc=item['price_rrc'],
-                        external_id=item['id']
-                    )
-
-                    for name, value in item['parameters'].items():
-                        parameter, _ = Parameter.objects.get_or_create(name=name)
-
-                        ProductParameter.objects.create(
-                            product_info_id=product_info.id,
-                            parameter_id=parameter.id,
-                            value=value
-                        )
-
         return {'Status': True, 'Message': 'Данные успешно импортированы'}
+
     except Exception as e:
+        # Логирование ошибки
         logger.error(f'Ошибка импорта данных: {e}', exc_info=True)
-        return {'Status': False, 'Error': str(e)}
+
+        # Если количество попыток исчерпано
+        if self.request.retries >= self.max_retries:
+            return {'Status': False, 'Error': f'Импорт не удался после {self.max_retries} попыток: {str(e)}'}
+
+        # Повторная попытка
+        try:
+            countdown = 2 ** self.request.retries
+            self.retry(exc=e, countdown=countdown)
+        except Retry as retry_exc:
+            raise retry_exc
 
 # @shared_task
 # def do_export(shop_id):

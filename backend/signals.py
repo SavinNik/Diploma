@@ -4,7 +4,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver, Signal
 from django.db.models.signals import post_save
 from django_rest_passwordreset.signals import reset_password_token_created
-from backend.models import User, ConfirmEmailToken, Order
+from backend.models import User, Order
 from backend.tasks import send_email
 
 

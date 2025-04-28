@@ -6,6 +6,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q, F, Sum
 from django.http import JsonResponse
@@ -634,9 +636,14 @@ class PartnerUpdate(APIView, AccessMixin):
 
         url = request.data.get('url')
         if url:
+            validate_url = URLValidator()
+            try:
+                validate_url(url)
+            except ValidationError:
+                return JsonResponse({'Status': False, 'Error': 'Неверный URL'}, status=400)
             task = do_import.delay(url)
             return JsonResponse({'Status': True, 'Task': str(task), 'Task ID': task.id})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, status=400)
 
 
 class PartnerState(APIView, AccessMixin):
@@ -958,6 +965,11 @@ class OrderView(APIView, AccessMixin):
         if {'id', 'contact'}.issubset(request.data):
             if request.data['id'].isdigit():
                 try:
+                    order = Order.objects.get(id=request.data['id'], user=request.user)
+                    for item in order.items.all():
+                        if item.product_info.quantity < item.quantity:
+                            return JsonResponse({'Status': False, 'Errors': 'Недостаточно товаров'})
+
                     is_updated = Order.objects.filter(
                         user_id=request.user.id, id=request.data['id']).update(
                         contact_id=request.data['contact'], status='new')
