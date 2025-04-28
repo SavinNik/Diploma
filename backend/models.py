@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from django_rest_passwordreset.tokens import get_token_generator
@@ -185,6 +186,10 @@ class Product(models.Model):
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', on_delete=models.CASCADE,
                                  blank=True)
 
+    @property
+    def category_name(self):
+        return self.category.name
+
     class Meta:
         verbose_name = 'Продукт'
         verbose_name_plural = 'Список продуктов'
@@ -204,7 +209,7 @@ class ProductInfo(models.Model):
     external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True, db_index=True)
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(verbose_name='Количество')
+    quantity = models.PositiveIntegerField(verbose_name='Количество', validators=[MinValueValidator(0)])
     price = models.PositiveIntegerField(verbose_name='Цена')
     price_rrc = models.PositiveIntegerField(verbose_name='Рекомендуемая розничная цена')
 

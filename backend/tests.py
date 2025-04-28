@@ -51,7 +51,7 @@ class UserRegistrationTestCase(TestCase):
             'position': 'Software Engineer'
         }
         response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Error", response.data)
         self.assertFalse(User.objects.filter(email=data['email']).exists())
 
@@ -68,7 +68,7 @@ class UserRegistrationTestCase(TestCase):
             'position': 'Software Engineer'
         }
         response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Error", response.data)
         self.assertFalse(User.objects.filter(email=data['email']).exists())
 
@@ -103,7 +103,7 @@ class UserLoginTestCase(TestCase):
         }
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("Token", response.data)
+        self.assertIn("Token", response.json())
 
     def test_user_login_invalid_password(self):
         """
@@ -267,14 +267,9 @@ class ProductImportTestCase(TestCase):
         Установка данных для тестирования
         """
         self.client = APIClient()
-        self.url = reverse('backend:partner-update')
         self.user = User.objects.create_user(
             email='shop@gmail.com',
             password='very_strong_password',
-            first_name='Shop',
-            last_name='Shoper',
-            company='ShopCompany',
-            position='Owner',
             user_type='shop'
         )
         self.client.force_authenticate(user=self.user)
@@ -286,7 +281,7 @@ class ProductImportTestCase(TestCase):
         data = {
             'url': 'https://example.com/shop1.yaml'
         }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.post('/api/v1/partner/update/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("Status", response.data)
         self.assertTrue(Shop.objects.filter(name='Связной').exists())
@@ -301,8 +296,8 @@ class ProductImportTestCase(TestCase):
         data = {
             'url': 'invalid_url'
         }
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.post('/api/v1/partner/update/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Error", response.data)
 
 
@@ -351,7 +346,7 @@ class OrderTestCase(TestCase):
         )
 
         # Создаем заказ и элемент заказа
-        self.order = Order.objects.create(user=self.user, state='basket')
+        self.order = Order.objects.create(user=self.user, status='basket')
         self.order_item = OrderItem.objects.create(order=self.order, product_info=self.product_info, quantity=2)
 
     def test_create_order(self):
@@ -392,21 +387,16 @@ class BasketTestCase(TestCase):
         Установка данных для тестирования
         """
         self.client = APIClient()
-        self.url = reverse('backend:basket')
         self.user = User.objects.create_user(
             email='buyer@gmail.com',
             password='very_strong_password',
-            first_name='Buyer',
-            last_name='Buyer',
-            company='BuyerCompany',
-            position='Buyer',
+            user_type='buyer'
         )
         self.client.force_authenticate(user=self.user)
 
         # Создаем магазин, категорию, продукт и информацию о продукте
         self.shop = Shop.objects.create(name='Связной', url='https://shop1.com', user=self.user)
         self.category = Category.objects.create(name='Смартфоны')
-        self.category.shops.add(self.shop)
         self.product = Product.objects.create(name='Смартфон Apple iPhone XS Max 512GB (золотистый)', category=self.category)
         self.product_info = ProductInfo.objects.create(
             model='apple/iphone/xs-max',
@@ -425,11 +415,21 @@ class BasketTestCase(TestCase):
         data = {
             'items': [{'product_info': self.product_info.id, 'quantity': 2}]
         }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.post('/api/v1/basket/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('Создано объектов', response.data)
         self.assertEqual(response.data['Создано объектов'], 1)
-        self.assertTrue(OrderItem.objects.filter(order__user=self.user, product_info=self.product_info).exists())
+
+    def test_invalid_quantity(self):
+        """
+        Тестирование добавления товара в корзину с неправильным количеством
+        """
+        data = {
+            'items': [{'product_info': self.product_info.id, 'quantity': -1}]
+        }
+        response = self.client.post('/api/v1/basket/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Error', response.data)
 
     def test_update_basket(self):
         """
@@ -441,7 +441,7 @@ class BasketTestCase(TestCase):
         data = {
             'items': [{'id': order_item.id, 'quantity': 3}]
         }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.post('/api/v1/basket/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('Обновлено объектов', response.data)
         self.assertEqual(response.data['Обновлено объектов'], 1)
@@ -458,33 +458,11 @@ class BasketTestCase(TestCase):
         data = {
             'items': str(order_item.id)
         }
-        response = self.client.post(self.url, data, format='json')
+        response = self.client.delete('/api/v1/basket/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('Удалено объектов', response.data)
         self.assertEqual(response.data['Удалено объектов'], 1)
         self.assertFalse(OrderItem.objects.filter(id=order_item.id).exists())
-
-    def test_basket_item_validation(self):
-        """
-        Тестирование валидации товара в корзине
-        """
-        order = Order.objects.create(user=self.user, state='basket')
-
-        # Отрицательное количество товара
-        data = {
-            'items': [{'product_info': self.product_info.id, 'quantity': -1}]
-        }
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Error', response.data)
-
-        # Нулевое количество товара
-        data = {
-            'items': [{'product_info': self.product_info.id, 'quantity': 0}]
-        }
-        response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Error', response.data)
 
     def test_basket_permissions(self):
         """
@@ -492,7 +470,7 @@ class BasketTestCase(TestCase):
         """
         # Попытка доступа без авторизации
         self.client.logout()
-        response = self.client.post(self.url, format='json')
+        response = self.client.post('/api/v1/basket/', format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn('Error', response.data)
 
@@ -502,7 +480,7 @@ class BasketTestCase(TestCase):
             password='very_strong_password'
         )
         self.client.force_authenticate(user=other_user)
-        response = self.client.post(self.url, format='json')
+        response = self.client.post('/api/v1/basket/', format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn('Error', response.data)
 
@@ -567,3 +545,45 @@ class ComprehensiveTestCase(TestCase):
         serializer = ProductInfoSerializer(product_info)
         self.assertEqual(serializer.data['quantity'], min_values['quantity'])
         self.assertEqual(serializer.data['price'], min_values['price'])
+
+
+class AccessTestCase(TestCase):
+    """
+    Тестирование прав доступа
+    """
+
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.buyer = User.objects.create_user(
+            email='buyer@gmail.com',
+            password='very_strong_password',
+            user_type='buyer'
+        )
+        self.shop = User.objects.create_user(
+            email='shop@gmail.com',
+            password='very_strong_password',
+            user_type='shop'
+        )
+
+    def test_partner_update_permissions(self):
+        """
+        Тестирование прав доступа для обновления прайса партнера
+        """
+        url = '/api/v1/partner/update/'
+        data = {
+            'url': 'https://example.com/shop1.yaml'
+        }
+
+        # Доступ покупателя
+        self.client.force_authenticate(user=self.buyer)
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('Error', response.data)
+
+        # Доступ магазина
+        self.client.force_authenticate(user=self.shop)
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

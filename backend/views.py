@@ -18,7 +18,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from utils import AccessMixin
+from .utils import AccessMixin
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -183,6 +183,52 @@ class AccountDetails(APIView, AccessMixin):
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
 
+class LoginView(APIView, AccessMixin):
+    """
+    Класс для авторизации пользователя
+    """
+
+    @swagger_auto_schema(
+        operation_description="Авторизация пользователя",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL,
+                                        description='Почтовый адрес'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль')
+            }
+        ),
+        responses={
+            200: 'Успешная авторизация',
+            400: 'Неправильно указан email или пароль',
+            403: 'Неавторизованный пользователь'
+        }
+    )
+    def post(self, request: Request, *args, **kwargs):
+        """
+        Авторизация пользователя
+
+        Args:
+            request: HTTP-запрос
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
+
+        Returns:
+            JsonResponse: JSON-ответ с результатом авторизации
+        """
+
+        # Проверка обязательных полей
+        if {'email', 'password'}.issubset(request.data):
+            user = self.check_auth(request)
+            if user is not None:
+                token, _ = MyTokenObtainPairSerializer.get_token(user)
+                return JsonResponse({'Status': True})
+            else:
+                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
 class CategoryView(ListAPIView):
     """
     Класс для получения списка категорий
@@ -289,7 +335,7 @@ class ProductInfoView(APIView):
         return Response(serializer.data)
 
 
-class BasketView(APIView):
+class BasketView(APIView, AccessMixin):
     """
     Класс для работы с корзиной
     """
@@ -313,11 +359,12 @@ class BasketView(APIView):
         Returns:
             JsonResponse: JSON-ответ с корзиной пользователя
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         basket = Order.objects.filter(
-            user_id=request.user.id, status='basket').prefetch_related(
+            user_id=request.user.id, status='basket').select_related('user', 'contact').prefetch_related(
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
@@ -368,8 +415,9 @@ class BasketView(APIView):
         """
         Добавление товара в корзину
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -434,8 +482,9 @@ class BasketView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом удаления товара из корзины
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -499,8 +548,9 @@ class BasketView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления количества товара в корзине
         """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        auth_response = self.check_auth(request)
+        if auth_response:
+            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:

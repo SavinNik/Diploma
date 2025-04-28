@@ -18,12 +18,12 @@ class AccessMixin:
         return None
 
 
-def string_to_bool(value):
+def string_to_bool(value: str) -> bool:
     """
-    Convert string to boolean.
+    Конвертирует строку в bool
     
     Args:
-        value: String value to convert
+        value: str
         
     Returns:
         bool: True for 'true', '1', 'yes', 'on', 'y'

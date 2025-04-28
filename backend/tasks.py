@@ -87,5 +87,5 @@ def do_import(url):
 
         return {'Status': True, 'Message': 'Данные успешно импортированы'}
     except Exception as e:
-        logger.error(f'Ошибка импорта данных: {e}')
+        logger.error(f'Ошибка импорта данных: {e}', exc_info=True)
         return {'Status': False, 'Error': str(e)}
