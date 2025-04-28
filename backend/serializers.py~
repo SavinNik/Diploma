@@ -6,18 +6,18 @@ from backend.models import User, Shop, Product, ProductInfo, Category, Order, Or
 
 
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Сериализатор токена
     """
-    @classmethod
-    def get_token(cls, user):
-        """
-        Добавляем email
-        """
-        token = super().get_token(user)
-        token['email'] = user.email
-        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        refresh = self.get_token(self.user)
+        data['refresh'] = str(refresh)
+        data['access'] = str(refresh.access_token)
+
+        return data
 
 
 

@@ -16,15 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from backend.views import SendEmailView, TaskStatusView
+from backend.views import SendEmailView, TaskStatusView, CustomTokenObtainPairView
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -46,6 +43,6 @@ urlpatterns = [
     path('api/v1/check-task-status/<str:task_id>', TaskStatusView.as_view(), name='check-task-status'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    path('api/v1/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/token/', CustomTokenObtainPairView, name='token_obtain_pair'),
     path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh')
 ]

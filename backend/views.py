@@ -1,28 +1,34 @@
 import json
-from django.db.models import Q, F, Sum
-from django.db import IntegrityError
-from django.contrib.auth.password_validation import validate_password
-from django.http import JsonResponse
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.request import Request
-from rest_framework.generics import ListAPIView
-from backend.models import ConfirmEmailToken, Category, Shop, ProductInfo, Order, OrderItem, Contact
-from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
-    OrderSerializer, ContactSerializer, MyTokenObtainPairSerializer, UserSerializer
-from backend.utils import string_to_bool
-from backend.signals import new_order
+
+import jwt
 from celery.result import AsyncResult
-from backend.tasks import do_import, send_email
-from drf_yasg.utils import swagger_auto_schema
+from django.conf import settings
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError
+from django.db.models import Q, F, Sum
+from django.http import JsonResponse
 from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework.generics import ListAPIView
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from backend.models import Category, Shop, ProductInfo, Order, OrderItem, Contact
+from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
+    OrderSerializer, ContactSerializer, UserSerializer, CustomTokenObtainPairSerializer
+from backend.signals import new_order
+from backend.tasks import do_import, send_email
+from backend.utils import string_to_bool
 from .utils import AccessMixin
 
 
-class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class RegisterAccount(APIView):
@@ -62,29 +68,31 @@ class RegisterAccount(APIView):
         """
 
         # Проверка обязательных полей
-        if {'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
-            try:
-                validate_password(request.data['password'])
-            except Exception as password_error:
-                error_array = []
-                for p_error in password_error:
-                    error_array.append(p_error)
-                return JsonResponse({'Status': False, 'Errors': error_array})
-            else:
-                # проверка уникальности имени пользователя
-                user_serializer = UserSerializer(data=request.data)
-                if user_serializer.is_valid():
-                    # создаём пользователя
-                    user = user_serializer.save()
-                    user.set_password(request.data['password'])
-                    user.save()
-                    refresh = RefreshToken.for_user(user)
-                    return JsonResponse({'refresh': str(refresh),
-                                         'access': str(refresh.access_token),
-                                         })
-                else:
-                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        if not all(field in request.data for field in
+                   ['first_name', 'last_name', 'email', 'password', 'company', 'position']):
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, status=400)
+
+        # Валидация пароля
+        try:
+            validate_password(request.data['password'])
+        except Exception as password_error:
+            return JsonResponse({'Status': False,
+                                 'Errors': str(password_error)},
+                                status=400)
+
+        # Проверка уникальности email
+        user_serializer = UserSerializer(data=request.data)
+        if user_serializer.is_valid():
+            # создаём пользователя
+            user = user_serializer.save()
+            user.set_password(request.data['password'])
+            user.save()
+            refresh = RefreshToken.for_user(user)
+            return JsonResponse({'refresh': str(refresh),
+                                 'access': str(refresh.access_token)})
+        else:
+            return JsonResponse({'Status': False,
+                                 'Errors': user_serializer.errors})
 
 
 class ConfirmAccount(APIView):
@@ -124,14 +132,21 @@ class ConfirmAccount(APIView):
 
         # Проверка обязательных полей
         if {'email', 'token'}.issubset(request.data):
-            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
-                                                     key=request.data['token']).first()
-            if token:
-                token.user.is_active = True
-                token.user.save()
-                token.delete()
-                return JsonResponse({'Status': True})
-            else:
+            email = request.data['email']
+            token = request.data['token']
+
+            try:
+                decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                user_email = decoded_token.get('email')
+
+                if user_email == email:
+                    user = User.objects.get(email=email)
+                    user.is_active = True
+                    user.save()
+                    return JsonResponse({'Status': True})
+                else:
+                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
+            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -167,12 +182,10 @@ class AccountDetails(APIView, AccessMixin):
             try:
                 validate_password(request.data['password'])
             except Exception as password_error:
-                error_array = []
-                for p_error in password_error:
-                    error_array.append(p_error)
-                return JsonResponse({'Status': False, 'Errors': error_array})
-            else:
-                request.user.set_password(request.data['password'])
+                return JsonResponse({'Status': False, 'Errors': str(password_error)}, status=400)
+
+            # Установка нового пароля
+            request.user.set_password(request.data['password'])
 
         # Проверка наличия остальных обязательных полей
         user_serializer = UserSerializer(request.user, data=request.data, partial=True)
@@ -180,7 +193,7 @@ class AccountDetails(APIView, AccessMixin):
             user_serializer.save()
             return JsonResponse({'Status': True})
         else:
-            return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+            return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, status=400)
 
 
 class LoginView(APIView, AccessMixin):
@@ -220,10 +233,13 @@ class LoginView(APIView, AccessMixin):
 
         # Проверка обязательных полей
         if {'email', 'password'}.issubset(request.data):
-            user = self.check_auth(request)
+            user = authenticate(email=request.data['email'], password=request.data['password'])
             if user is not None:
-                token, _ = MyTokenObtainPairSerializer.get_token(user)
-                return JsonResponse({'Status': True})
+                refresh = RefreshToken.for_user(user)
+                return JsonResponse({'Status': True,
+                                     'Refresh': str(refresh),
+                                     'Access': str(refresh.access_token)
+                                     })
             else:
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})

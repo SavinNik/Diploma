@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from backend.models import User, Shop, Product, ProductInfo, Category, Order, OrderItem, Contact, ConfirmEmailToken, \
+from backend.models import User, Shop, Product, ProductInfo, Category, Order, OrderItem, Contact, \
     Parameter, ProductParameter
 
 
@@ -164,27 +164,3 @@ class ContactAdmin(admin.ModelAdmin):
     search_fields = ('user__email', 'city', 'street')
     list_filter = ('user',)
 
-
-@admin.register(ConfirmEmailToken)
-class ConfirmEmailTokenAdmin(admin.ModelAdmin):
-    """
-    Административная панель для управления токенами подтверждения email.
-    
-    Attributes:
-        list_display: Поля для отображения в списке токенов
-        search_fields: Поля для поиска токенов
-    """
-    def user_email(self, obj):
-        return obj.user.email if obj.user else '-'
-    user_email.short_description = 'Email пользователя'
-
-    def token_created(self, obj):
-        return obj.created_at
-    token_created.short_description = 'Дата создания'
-
-    def token_key(self, obj):
-        return obj.key
-    token_key.short_description = 'Токен'
-
-    list_display = ('user_email', 'token_created', 'token_key')
-    search_fields = ('user__email',)
