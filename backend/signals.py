@@ -1,10 +1,10 @@
 from typing import Type
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.contrib.auth.tokens import default_token_generator
 from django.dispatch import receiver, Signal
 from django.db.models.signals import post_save
 from django_rest_passwordreset.signals import reset_password_token_created
-from rest_framework_simplejwt.tokens import RefreshToken
+
 
 from backend.models import User, Order
 from backend.tasks import send_email
@@ -29,17 +29,19 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     """
     if created:
         # Создаем токен для подтверждения email
-        token = RefreshToken.for_user(instance)
+        token = default_token_generator.make_token(instance)
+        # Создаем ссылку для подтверждения email
+        verification_link = f'{settings.FRONTEND_URL}/verify-email/{token}'
         # Отправляем письмо с токеном для подтверждения email
         send_email.delay(
             # Заголовок письма
-            f'Токен для подтверждения email для {instance.email}',
+            subject='Подтверждение email',
             # Текст письма
-            token,
+            message=f'Для подтверждения email перейдите по ссылке: {verification_link}',
             # Отправитель
-            settings.EMAIL_HOST_USER,
+            from_email=settings.EMAIL_HOST_USER,
             # Получатели
-            [instance.email]
+            recipient_list=[instance.email]
         )
 
 
@@ -71,4 +73,25 @@ def new_order_signal(user_id: int, *args, **kwargs):
         settings.EMAIL_HOST_USER,
         # Получатели
         [user.email]
+    )
+
+@receiver(reset_password_token_created)
+def password_reset_token_created(sender: Type[User], instance: User, reset_password_token, *args, **kwargs):
+    """
+    Отправляем письмо с токеном для сброса пароля
+    :param sender: Класс, который вызвал сигнал
+    :param instance: Экземпляр класса, который вызвал сигнал
+    :param reset_password_token: Токен для сброса пароля
+    :param args: Дополнительные аргументы
+    :param kwargs: Дополнительные аргументы
+    """
+    send_email.delay(
+        # Заголовок письма
+        subject='Сброс пароля',
+        # Текст письма
+        message=f'Токен для сброса пароля: {reset_password_token.key}',
+        # Отправитель
+        from_email=settings.EMAIL_HOST_USER,
+        # Получатели
+        recipient_list=[instance.email]
     )

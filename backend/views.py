@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -14,6 +15,7 @@ from django.http import JsonResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -78,9 +80,7 @@ class RegisterAccount(APIView):
         try:
             validate_password(request.data['password'])
         except Exception as password_error:
-            return JsonResponse({'Status': False,
-                                 'Errors': str(password_error)},
-                                status=400)
+            return JsonResponse({'Status': False, 'Errors': str(password_error)}, status=400)
 
         # Проверка уникальности email
         user_serializer = UserSerializer(data=request.data)
@@ -90,8 +90,10 @@ class RegisterAccount(APIView):
             user.set_password(request.data['password'])
             user.save()
             refresh = RefreshToken.for_user(user)
-            return JsonResponse({'refresh': str(refresh),
-                                 'access': str(refresh.access_token)})
+            return JsonResponse({'status': True,
+                                 'refresh': str(refresh),
+                                 'access': str(refresh.access_token)
+                                 })
         else:
             return JsonResponse({'Status': False,
                                  'Errors': user_serializer.errors})
@@ -138,13 +140,12 @@ class ConfirmAccount(APIView):
             token = request.data['token']
 
             try:
-                decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-                user_email = decoded_token.get('email')
+                user = User.objects.get(email=email)
 
-                if user_email == email:
-                    user = User.objects.get(email=email)
-                    user.is_active = True
-                    user.save()
+                if default_token_generator.check_token(user, token):
+                    if not user.is_active:
+                        user.is_active = True
+                        user.save()
                     return JsonResponse({'Status': True})
                 else:
                     return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
@@ -153,7 +154,8 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class AccountDetails(APIView, AccessMixin):
+class AccountDetails(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения и обновления данных аккаунта пользователя
     """
@@ -173,32 +175,57 @@ class AccountDetails(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с данными аккаунта пользователя
         """
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
 
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
+    @swagger_auto_schema(
+        operation_description="Обновление данных аккаунта пользователя",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['password'],
+            properties={
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль')
+            }
+        ),
+        responses={
+            200: 'Данные аккаунта успешно обновлены',
+            400: 'Невалидные данные',
+            403: 'Неавторизованный пользователь'
+        }
+    )
+    def post(self, request: Request, *args, **kwargs):
+        """
+        Обновление данных аккаунта пользователя
 
-        # Проверка наличия обязательных полей
-        if 'password' in request.data:
-            # Проверка пароля на сложность
-            try:
-                validate_password(request.data['password'])
-            except Exception as password_error:
-                return JsonResponse({'Status': False, 'Errors': str(password_error)}, status=400)
+        Args:
+            request: HTTP-запрос
+            *args: Дополнительные аргументы
+            **kwargs: Дополнительные аргументы
 
-            # Установка нового пароля
+        Returns:
+            JsonResponse: JSON-ответ с результатом обновления данных аккаунта пользователя
+        """
+        # Проверка обязательных полей
+        if not all(field in request.data for field in ['password']):
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+            # Валидация пароля
+        try:
+            validate_password(request.data['password'])
+        except Exception as password_error:
+            return JsonResponse({'Status': False, 'Errors': str(password_error)}, status=400)
+        else:
             request.user.set_password(request.data['password'])
 
-        # Проверка наличия остальных обязательных полей
-        user_serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if user_serializer.is_valid():
-            user_serializer.save()
+        # Проверяем остальные поля
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
             return JsonResponse({'Status': True})
         else:
-            return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, status=400)
+            return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
 
-class LoginView(APIView, AccessMixin):
+class LoginView(APIView):
     """
     Класс для авторизации пользователя
     """
@@ -353,7 +380,8 @@ class ProductInfoView(APIView):
         return Response(serializer.data)
 
 
-class BasketView(APIView, AccessMixin):
+class BasketView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для работы с корзиной
     """
@@ -377,9 +405,6 @@ class BasketView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с корзиной пользователя
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         basket = Order.objects.filter(
             user_id=request.user.id, status='basket').select_related('user', 'contact').prefetch_related(
@@ -433,9 +458,6 @@ class BasketView(APIView, AccessMixin):
         """
         Добавление товара в корзину
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -500,9 +522,6 @@ class BasketView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом удаления товара из корзины
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -566,9 +585,6 @@ class BasketView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления количества товара в корзине
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -588,6 +604,7 @@ class BasketView(APIView, AccessMixin):
 
 
 class PartnerUpdate(APIView, AccessMixin):
+    permission_classes = [IsAuthenticated]
     """
     Класс для обновления информации о партнере
     """
@@ -630,7 +647,7 @@ class PartnerUpdate(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления прайса от поставщика
         """
-        access_response = self.check_shop_access(request) and self.check_auth(request)
+        access_response = self.check_shop_access(request)
         if access_response:
             return access_response
 
@@ -647,6 +664,7 @@ class PartnerUpdate(APIView, AccessMixin):
 
 
 class PartnerState(APIView, AccessMixin):
+    permission_classes = [IsAuthenticated]
     """
     Класс для управления статусом партнера
     """
@@ -666,7 +684,7 @@ class PartnerState(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом получения статуса партнера
         """
-        access_response = self.check_shop_access(request) and self.check_auth(request)
+        access_response = self.check_shop_access(request)
         if access_response:
             return access_response
 
@@ -699,7 +717,7 @@ class PartnerState(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления статуса партнера
         """
-        access_response = self.check_shop_access(request) and self.check_auth(request)
+        access_response = self.check_shop_access(request)
         if access_response:
             return access_response
 
@@ -715,6 +733,7 @@ class PartnerState(APIView, AccessMixin):
 
 
 class PartnerOrders(APIView, AccessMixin):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения заказов партнера
     """
@@ -734,7 +753,7 @@ class PartnerOrders(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом получения заказов партнера
         """
-        access_response = self.check_shop_access(request) and self.check_auth(request)
+        access_response = self.check_shop_access(request)
         if access_response:
             return access_response
 
@@ -749,7 +768,8 @@ class PartnerOrders(APIView, AccessMixin):
         return Response(serializer.data)
 
 
-class ContactView(APIView, AccessMixin):
+class ContactView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для работы с контактами
     """
@@ -773,9 +793,6 @@ class ContactView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом получения контактов пользователя
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         contact = Contact.objects.filter(user_id=request.user.id).all()
         serializer = ContactSerializer(contact, many=True)
@@ -802,9 +819,6 @@ class ContactView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом добавления контакта
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         if {'city', 'street', 'phone'}.issubset(request.data):
             request.data._mutable = True
@@ -838,9 +852,6 @@ class ContactView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления контактной информации
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         if 'id' in request.data:
             if request.data['id'].isdigit():
@@ -891,9 +902,6 @@ class ContactView(APIView, AccessMixin):
         Returns:
             JsonResponse: JSON-ответ с результатом удаления контактной информации
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         items_ids = request.data.get('items')
         if items_ids:
@@ -910,7 +918,8 @@ class ContactView(APIView, AccessMixin):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class OrderView(APIView, AccessMixin):
+class OrderView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для работы с заказами
     """
@@ -926,9 +935,6 @@ class OrderView(APIView, AccessMixin):
         """
         Получение заказов пользователя
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         order = Order.objects.filter(
             user_id=request.user.id).exclude(status='basket').prefetch_related(
@@ -958,9 +964,6 @@ class OrderView(APIView, AccessMixin):
         """
         Размещение заказа из корзины
         """
-        auth_response = self.check_auth(request)
-        if auth_response:
-            return auth_response
 
         if {'id', 'contact'}.issubset(request.data):
             if request.data['id'].isdigit():

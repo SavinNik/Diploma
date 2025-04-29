@@ -1,11 +1,16 @@
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
+from django.core import mail
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from backend.models import Shop, Product, ProductInfo, Order, OrderItem, Contact, Category
-from backend.serializers import ProductInfoSerializer
+from backend.serializers import ProductInfoSerializer, UserSerializer
+from backend.tasks import send_email
+from backend.utils import get_password_reset_token
 
 User = get_user_model()
 
@@ -72,6 +77,27 @@ class UserRegistrationTestCase(TestCase):
         self.assertIn("Error", response.data)
         self.assertFalse(User.objects.filter(email=data['email']).exists())
 
+    def test_duplicate_email(self):
+        """
+        Тестирование регистрации пользователя с уже существующим адресом электронной почты
+        """
+        User.objects.create_user(
+            email='niksav@gmail.com',
+            password='very_strong_password',
+        )
+        data = {
+            'first_name': 'Nik',
+            'last_name': 'Sav',
+            'email': 'niksav@gmail.com',
+            'password': 'very_strong_password',
+            'company': 'Google',
+            'position': 'Software Engineer'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Error", response.data)
+        self.assertFalse(User.objects.filter(email=data['email']).exists())
+
 
 class UserLoginTestCase(TestCase):
     """
@@ -116,6 +142,148 @@ class UserLoginTestCase(TestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("Error", response.data)
+
+    def test_login_with_inactive_user(self):
+        """
+        Тестирование авторизации пользователя с неактивным пользователем
+        """
+        self.user.is_active = False
+        self.user.save()
+        data = {
+            'email': 'niksav@gmail.com',
+            'password': 'very_strong_password'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("Error", response.data)
+
+    def test_login_missing_fields(self):
+        """
+        Тестирование авторизации без обязательных полей
+        """
+        data = {
+            'email': 'niksav@gmail.com'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Error", response.data)
+
+
+class ConfirmEmailTestCase(TestCase):
+    """
+    Тестирование подтверждения электронной почты
+    """
+
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email='confim@gmail.com',
+            password='password',
+            is_active=False
+        )
+        self.url = reverse('user-confirm-email')
+        self.token = default_token_generator.make_token(self.user)
+
+    def test_confirm_valid_email(self):
+        """
+        Подтверждение электронной почты с валидным токеном
+        """
+        data = {
+            'email': self.user.email,
+            'token': self.token
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.get(email=self.user.email).is_active)
+
+    def test_confirm_invalid_email(self):
+        """
+        Подтверждение электронной почты с невалидным токеном
+        """
+        data = {
+            'email': self.user.email,
+            'token': 'invalid_token'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.get(email=self.user.email).is_active)
+
+
+class PasswordResetTestCase(TestCase):
+    """
+    Тестирование сброса пароля
+    """
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.client = APIClient()
+        self.reset_url = reverse('password-reset')
+        self.confirm_reset_url = reverse('password-reset-confirm')
+        self.user = User.objects.create_user(
+            email='reset@gmail.com',
+            password='very_strong_password'
+        )
+
+    def test_password_reset_request(self):
+        """
+        Тестирование запроса на сброс пароля
+        """
+        response =self.client.post(self.reset_url, {'email': self.user.email}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Token", response.json())
+
+    def test_password_reset_confirm(self):
+        """
+        Установка нового пароля через токен
+        """
+        token = get_password_reset_token(self.user)
+        data = {
+            'token': token,
+            'password': 'newpassword'
+        }
+        response = self.client.post(self.confirm_reset_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.get(email=self.user.email).check_password(data['password']))
+
+
+class UserSerializerTestCase(TestCase):
+    """
+    Тестирование сериализатора пользователя
+    """
+    def setUp(self):
+        """
+        Установка данных для тестирования
+        """
+        self.user_data = {
+            'email': 'buyer@gmail.com',
+            'password': 'very_strong_password',
+            'first_name': 'Buyer',
+            'last_name': 'Buyer',
+            'company': 'BuyerCompany',
+            'position': 'Buyer'
+    }
+
+    def test_serializer_valid_data(self):
+        """
+        Тестирование сериализатора с валидными данными
+        """
+        serializer = UserSerializer(data=self.user_data)
+        self.assertTrue(serializer.is_valid())
+        user = serializer.save()
+        self.assertEqual(user.email, self.user_data['email'])
+
+    def test_serializer_invalid_email(self):
+        """
+        Тестирование сериализатора с невалидными данными
+        """
+        self.user_data['email'] = 'invalid_email'
+        serializer = UserSerializer(data=self.user_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('email', serializer.errors)
 
 
 class PermissionTestCase(TestCase):
@@ -471,7 +639,7 @@ class BasketTestCase(TestCase):
         # Попытка доступа без авторизации
         self.client.logout()
         response = self.client.post('/api/v1/basket/', format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('Error', response.data)
 
         # Доступ другого пользователя
@@ -587,3 +755,19 @@ class AccessTestCase(TestCase):
         self.client.force_authenticate(user=self.shop)
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class SendEmailTestCase(TestCase):
+    """
+    Тестирование отправки электронной почты
+    """
+    def test_send_email_task(self):
+
+        send_email.delay('Subject', 'Message', settings.EMAIL_HOST_USER, ['test@gmail.com'])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Subject')
+        self.assertEqual(mail.outbox[0].body, 'Message')
+
+    def test_send_email_task_failure(self):
+        with self.assertRaises(Exception):
+            send_email.retry(exc=Exception('SMTP error'), countdown=5)

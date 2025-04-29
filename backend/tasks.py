@@ -4,8 +4,6 @@ from celery.exceptions import Retry
 from django.core.mail import EmailMultiAlternatives
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
-# from django.core.files.base import ContentFile
-# from django.core.files.storage import default_storage
 from backend.models import ProductInfo, Shop, Category, Parameter, ProductParameter, Product, User
 # import yaml
 from yaml import load as load_yaml, Loader

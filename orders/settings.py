@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django_rest_passwordreset',
     'drf_yasg',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     
     'backend',
 ]
@@ -163,7 +164,9 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True
+    'BLACKLIST_AFTER_ROTATION': True,
+    'BLACKLIST_TOKEN_CHECKS': ['refresh'],
+    'TOKEN_OBTAIN_SERIALIZER': 'backend.serializers.CustomTokenObtainPairSerializer',
 }
 
 # Настройки аутентификации
