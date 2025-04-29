@@ -4,6 +4,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver, Signal
 from django.db.models.signals import post_save
 from django_rest_passwordreset.signals import reset_password_token_created
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from backend.models import User, Order
 from backend.tasks import send_email
 
@@ -11,32 +13,6 @@ from backend.tasks import send_email
 # Сигналы для новых пользователей и новых заказов
 new_user_registered = Signal()
 new_order = Signal()
-
-
-@receiver(reset_password_token_created)
-def password_reset_token_created(sender: Type[User], instance: User, reset_password_token, *args, **kwargs):
-    """
-    Отправляет письмо с токеном для сброса пароля
-
-    Args:
-        sender: Модель, которая вызвала сигнал
-        instance: Экземпляр модели, которая вызвала сигнал
-        reset_password_token: Токен для сброса пароля
-        *args: Дополнительные аргументы
-        **kwargs: Дополнительные аргументы
-    """
-    # Отправляем письмо с токеном для сброса пароля
-    message = EmailMultiAlternatives(
-        # Заголовок письма
-        f'Токен для сброса пароля для {reset_password_token.user}',
-        # Текст письма
-        reset_password_token.key,
-        # Отправитель
-        settings.EMAIL_HOST_USER,
-        # Получатели
-        [reset_password_token.user.email]
-    )
-    message.send()
 
 
 @receiver(post_save, sender=User)
@@ -53,13 +29,13 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     """
     if created:
         # Создаем токен для подтверждения email
-        token, _ = ConfirmEmailToken.objects.get_or_create(user=instance)
+        token = RefreshToken.for_user(instance)
         # Отправляем письмо с токеном для подтверждения email
         send_email.delay(
             # Заголовок письма
             f'Токен для подтверждения email для {instance.email}',
             # Текст письма
-            token.key,
+            token,
             # Отправитель
             settings.EMAIL_HOST_USER,
             # Получатели
