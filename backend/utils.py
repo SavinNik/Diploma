@@ -1,3 +1,4 @@
+import requests
 from django.http import JsonResponse
 from django_rest_passwordreset.models import ResetPasswordToken
 
@@ -38,8 +39,16 @@ def string_to_bool(value: str) -> bool:
 
 def get_password_reset_token(user):
     """
-    Получает ключ
+    Получает ключ сброса пароля пользователя
 
     """
     token_obj = ResetPasswordToken.objects.filter(user=user).order_by('-created_at').first()
     return token_obj.key if token_obj else None
+
+def validate_url(url):
+    try:
+        response = requests.head(url, timeout=5)
+        response.raise_for_status()
+        return True
+    except requests.exceptions.RequestException:
+        raise ValueError("Неверный URL")

@@ -20,7 +20,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
 
-
 class ContactSerializer(serializers.ModelSerializer):
     """
     Сериализатор модели Contact

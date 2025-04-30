@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.validators import URLValidator
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import Q, F, Sum
 from django.http import JsonResponse
@@ -118,7 +118,8 @@ class ConfirmAccount(APIView):
         responses={
             200: 'Email успешно подтвержден',
             400: 'Неправильно указан email или token',
-            403: 'Неавторизованный пользователь'
+            403: 'Неавторизованный пользователь',
+            404: 'Пользователь не найден'
         }
     )
     def post(self, request: Request, *args, **kwargs):
@@ -135,24 +136,28 @@ class ConfirmAccount(APIView):
         """
 
         # Проверка обязательных полей
-        if {'email', 'token'}.issubset(request.data):
-            email = request.data['email']
-            token = request.data['token']
+        email = request.data['email']
+        token = request.data['token']
 
-            try:
-                user = User.objects.get(email=email)
+        if not email or not token:
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны email или token'}, status=400)
 
-                if default_token_generator.check_token(user, token):
-                    if not user.is_active:
-                        user.is_active = True
-                        user.save()
-                    return JsonResponse({'Status': True})
-                else:
-                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
-            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или token'})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        try:
+            user = User.objects.get(email=email)
 
+            if not default_token_generator.check_token(user, token):
+                return JsonResponse({'Status': False, 'Errors': 'Неверный или старый token'}, status=400)
+
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
+            return JsonResponse({'Status': True})
+
+        except ObjectDoesNotExist:
+            return JsonResponse({'Status': False, 'Errors': 'Пользователь не найден'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'Status': False, 'Errors': 'Внутренняя ошибка сервера'}, status=500)
 
 class AccountDetails(APIView):
     permission_classes = [IsAuthenticated]
