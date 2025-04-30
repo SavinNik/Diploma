@@ -114,6 +114,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+FRONTEND_URL = 'http://localhost:8000'
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

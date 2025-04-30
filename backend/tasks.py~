@@ -4,6 +4,7 @@ from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import transaction
+from django.utils import timezone
 
 from backend.models import ProductInfo, Shop, Category, Parameter, ProductParameter, Product, User
 import yaml

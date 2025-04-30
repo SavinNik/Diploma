@@ -41,21 +41,22 @@ class RegisterAccount(APIView):
     """
 
     @swagger_auto_schema(
-        operation_description="Регистрация нового пользователя",
-        request_body=UserSerializer,
+        request_body=openapi.Schema(
+            description='Регистрация нового пользователя',
+            type=openapi.TYPE_OBJECT,
+            required=['first_name', 'last_name', 'email', 'password', 'company', 'position'],
+            properties={
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description='Имя'),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description='Фамилия'),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Email'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль'),
+                'company': openapi.Schema(type=openapi.TYPE_STRING, description='Компания'),
+                'position': openapi.Schema(type=openapi.TYPE_STRING, description='Должность'),
+            }
+        ),
         responses={
-            201: openapi.Response(
-                description="Успешная регистрация",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='Refresh-токен'),
-                        'access': openapi.Schema(type=openapi.TYPE_STRING, description='Access-токен'),
-                    },
-                )
-            ),
+            200: 'Успешная регистрация',
             400: 'Ошибка регистрации',
-            403: 'Неавторизованный пользователь'
         }
     )
     def post(self, request: Request, *args, **kwargs):
@@ -89,14 +90,15 @@ class RegisterAccount(APIView):
             user = user_serializer.save()
             user.set_password(request.data['password'])
             user.save()
-            refresh = RefreshToken.for_user(user)
-            return JsonResponse({'status': True,
-                                 'refresh': str(refresh),
-                                 'access': str(refresh.access_token)
-                                 })
+            return JsonResponse({
+                'Status': True,
+                'Message': 'Пользователь успешно зарегистрирован. Подтвердите email для активации аккаунта.'
+            })
         else:
-            return JsonResponse({'Status': False,
-                                 'Errors': user_serializer.errors})
+            return JsonResponse({
+                'Status': False,
+                'Errors': user_serializer.errors
+            })
 
 
 class ConfirmAccount(APIView):

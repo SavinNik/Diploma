@@ -9,7 +9,7 @@ from django.utils import timezone
 from backend.models import ProductInfo, Shop, Category, Parameter, ProductParameter, Product, User
 import yaml
 from yaml import load as load_yaml, Loader
-from utils import validate_url
+from backend.utils import validate_url
 
 logger = logging.getLogger(__name__)
 
