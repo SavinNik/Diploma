@@ -313,3 +313,18 @@ class OrderItem(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['order', 'product_info'], name='unique_order_item')
         ]
+
+
+class ResetPasswordToken(models.Model):
+    """
+    Модель токена для сброса пароля
+    """
+    objects = models.Manager()
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='reset_password_tokens',
+                             on_delete=models.CASCADE)
+    token = models.CharField(verbose_name='Токен', max_length=50)
+    created_at = models.DateTimeField(verbose_name='Дата создания', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Токен для сброса пароля'
+        verbose_name_plural = 'Список токенов для сброса паролей'

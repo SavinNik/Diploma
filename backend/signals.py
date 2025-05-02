@@ -91,5 +91,5 @@ def password_reset_token_created(sender: Type[User], instance: User, reset_passw
         # Отправитель
         from_email=settings.EMAIL_HOST_USER,
         # Получатели
-        recipient_list=[instance.email]
+        recipient_list=[reset_password_token.user.email]
     )

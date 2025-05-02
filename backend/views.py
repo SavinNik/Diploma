@@ -198,7 +198,8 @@ class AccountDetails(APIView):
             200: 'Данные аккаунта успешно обновлены',
             400: 'Невалидные данные',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -252,7 +253,8 @@ class LoginView(APIView):
             200: 'Успешная авторизация',
             400: 'Неправильно указан email или пароль',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
