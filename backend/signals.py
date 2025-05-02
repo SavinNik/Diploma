@@ -30,14 +30,13 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     if created:
         # Создаем токен для подтверждения email
         token = default_token_generator.make_token(instance)
-        # Создаем ссылку для подтверждения email
-        verification_link = f'{settings.FRONTEND_URL}/verify-email/{token}'
+        print(token)
         # Отправляем письмо с токеном для подтверждения email
         send_email.delay(
             # Заголовок письма
             subject='Подтверждение email',
             # Текст письма
-            message=f'Для подтверждения email перейдите по ссылке: {verification_link}',
+            message=f'Ваш токен: {token}',
             # Отправитель
             from_email=settings.EMAIL_HOST_USER,
             # Получатели

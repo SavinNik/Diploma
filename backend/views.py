@@ -1,9 +1,7 @@
 import json
 
-import jwt
 from celery.result import AsyncResult
-from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -29,6 +27,8 @@ from backend.signals import new_order
 from backend.tasks import do_import, send_email
 from backend.utils import string_to_bool
 from .utils import AccessMixin
+
+User = get_user_model()
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -138,8 +138,8 @@ class ConfirmAccount(APIView):
         """
 
         # Проверка обязательных полей
-        email = request.data['email']
-        token = request.data['token']
+        email = request.data.get('email')
+        token = request.data.get('token')
 
         if not email or not token:
             return JsonResponse({'Status': False, 'Errors': 'Не указаны email или token'}, status=400)
