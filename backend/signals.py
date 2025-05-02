@@ -30,7 +30,6 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     if created:
         # Создаем токен для подтверждения email
         token = default_token_generator.make_token(instance)
-        print(token)
         # Отправляем письмо с токеном для подтверждения email
         send_email.delay(
             # Заголовок письма

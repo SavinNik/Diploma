@@ -2,6 +2,7 @@ import json
 
 from celery.result import AsyncResult
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -87,9 +88,7 @@ class RegisterAccount(APIView):
         user_serializer = UserSerializer(data=request.data)
         if user_serializer.is_valid():
             # создаём пользователя
-            user = user_serializer.save()
-            user.set_password(request.data['password'])
-            user.save()
+            user_serializer.save(is_active=False)
             return JsonResponse({
                 'Status': True,
                 'Message': 'Пользователь успешно зарегистрирован. Подтвердите email для активации аккаунта.'
@@ -160,6 +159,7 @@ class ConfirmAccount(APIView):
 
         except Exception as e:
             return JsonResponse({'Status': False, 'Errors': 'Внутренняя ошибка сервера'}, status=500)
+
 
 class AccountDetails(APIView):
     permission_classes = [IsAuthenticated]

@@ -42,8 +42,19 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'contacts', 'company', 'position')
+        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'contacts', 'company', 'position')
         read_only_fields = ('id',)
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'email': {'required': True},
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
 
 class CategorySerializer(serializers.ModelSerializer):
