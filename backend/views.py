@@ -168,7 +168,8 @@ class AccountDetails(APIView):
     """
 
     @swagger_auto_schema(
-        responses={200: UserSerializer, 403: 'Неавторизованный пользователь'}
+        responses={200: UserSerializer, 403: 'Неавторизованный пользователь'},
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -187,13 +188,7 @@ class AccountDetails(APIView):
 
     @swagger_auto_schema(
         operation_description="Обновление данных аккаунта пользователя",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['password'],
-            properties={
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль')
-            }
-        ),
+        request_body=UserSerializer,
         responses={
             200: 'Данные аккаунта успешно обновлены',
             400: 'Невалидные данные',
@@ -213,16 +208,15 @@ class AccountDetails(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом обновления данных аккаунта пользователя
         """
-        # Проверка обязательных полей
-        if not all(field in request.data for field in ['password']):
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-            # Валидация пароля
-        try:
-            validate_password(request.data['password'])
-        except Exception as password_error:
-            return JsonResponse({'Status': False, 'Errors': str(password_error)}, status=400)
-        else:
-            request.user.set_password(request.data['password'])
+        # Проверка поля password
+        if 'password' in request.data:
+            try:
+                validate_password(request.data['password'])
+            except ValidationError as e:
+                return JsonResponse({'Status': False, 'Errors': e.messages}, status=400)
+            else:
+                request.user.set_password(request.data['password'])
+                return JsonResponse({'Status': True})
 
         # Проверяем остальные поля
         serializer = UserSerializer(request.user, data=request.data, partial=True)
@@ -254,7 +248,6 @@ class LoginView(APIView):
             400: 'Неправильно указан email или пароль',
             403: 'Неавторизованный пользователь'
         },
-        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -284,6 +277,7 @@ class LoginView(APIView):
 
 
 class CategoryView(ListAPIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения списка категорий
     """
@@ -293,7 +287,8 @@ class CategoryView(ListAPIView):
     @swagger_auto_schema(
         operation_description="Получение списка категорий",
         responses={200: CategorySerializer(many=True),
-                   403: 'Неавторизованный пользователь'}
+                   403: 'Неавторизованный пользователь'},
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -318,7 +313,9 @@ class ShopView(ListAPIView):
     serializer_class = ShopSerializer
 
     @swagger_auto_schema(
-        responses={200: ShopSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        responses={200: ShopSerializer(many=True),
+                   403: 'Неавторизованный пользователь'},
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -336,6 +333,7 @@ class ShopView(ListAPIView):
 
 
 class ProductInfoView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения информации о продукте
     """
@@ -355,7 +353,8 @@ class ProductInfoView(APIView):
         responses={
             200: ProductInfoSerializer(many=True),
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -400,7 +399,8 @@ class BasketView(APIView):
         responses={
             200: OrderItemSerializer(many=True),
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -460,7 +460,8 @@ class BasketView(APIView):
                 ),
                 400: 'Ошибка добавления товаров в корзину',
                 403: 'Неавторизованный пользователь'
-            }
+            },
+            security=[{'Bearer': []}]
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -517,7 +518,8 @@ class BasketView(APIView):
             ),
             400: 'Ошибка удаления товаров из корзины',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def delete(self, request: Request, *args, **kwargs):
         """
@@ -580,7 +582,8 @@ class BasketView(APIView):
             ),
             400: 'Ошибка обновления количества товаров в корзине',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def put(self, request: Request, *args, **kwargs):
         """
@@ -642,7 +645,8 @@ class PartnerUpdate(APIView, AccessMixin):
             ),
             400: 'Неверный URL',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -679,7 +683,8 @@ class PartnerState(APIView, AccessMixin):
     """
 
     @swagger_auto_schema(
-        responses={200: ShopSerializer, 403: 'Неавторизованный пользователь'}
+        responses={200: ShopSerializer, 403: 'Неавторизованный пользователь'},
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -711,7 +716,8 @@ class PartnerState(APIView, AccessMixin):
                 'state': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус партнера')
             },
             responses={200: 'Успешное обновление статуса партнера', 400: 'Ошибка обновления статуса партнера',
-                       403: 'Неавторизованный пользователь'}
+                       403: 'Неавторизованный пользователь'},
+            security=[{'Bearer': []}]
         ),
     )
     def post(self, request: Request, *args, **kwargs):
@@ -748,7 +754,8 @@ class PartnerOrders(APIView, AccessMixin):
     """
 
     @swagger_auto_schema(
-        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'}
+        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'},
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -788,7 +795,8 @@ class ContactView(APIView):
         responses={
             200: ContactSerializer(many=True),
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -814,7 +822,8 @@ class ContactView(APIView):
             200: 'Успешное добавление контакта',
             400: 'Ошибка добавления контакта',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -847,7 +856,8 @@ class ContactView(APIView):
             200: 'Успешное обновление контактной информации',
             400: 'Ошибка обновления контактной информации',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def put(self, request: Request, *args, **kwargs):
         """
@@ -897,7 +907,8 @@ class ContactView(APIView):
             ),
             400: 'Ошибка удаления контактов',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def delete(self, request: Request, *args, **kwargs):
         """
@@ -938,7 +949,8 @@ class OrderView(APIView):
         responses={
             200: OrderSerializer(many=True),
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
         """
@@ -967,7 +979,8 @@ class OrderView(APIView):
             200: 'Заказ успешно размещен',
             400: 'Ошибка размещения заказа',
             403: 'Неавторизованный пользователь'
-        }
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -1017,7 +1030,7 @@ class SendEmailView(APIView):
             200: 'Успешное отправление электронной почты',
             400: 'Ошибка отправления электронной почты',
             403: 'Неавторизованный пользователь'
-        }
+        },
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -1043,12 +1056,18 @@ class SendEmailView(APIView):
 
 
 class TaskStatusView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения статуса задачи
     """
 
     @swagger_auto_schema(
-        responses={200: 'Успешное получение статуса задачи', 403: 'Неавторизованный пользователь'}
+        responses={
+            200: 'Успешное получение статуса задачи',
+            403: 'Неавторизованный пользователь',
+            400: 'Ошибка получения статуса задачи'
+        },
+        security=[{'Bearer': []}]
     )
     def get(self, request: Request, task_id: str, *args, **kwargs):
         """
