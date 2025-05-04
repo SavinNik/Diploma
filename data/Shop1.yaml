@@ -18,10 +18,10 @@ goods:
     price_rrc: 116990
     quantity: 14
     parameters:
-      "Диагональ (дюйм)": 6.5
-      "Разрешение (пикс)": 2688x1242
-      "Встроенная память (Гб)": 512
-      "Цвет": золотистый
+      Диагональ (дюйм): 6.5
+      Разрешение (пикс): 2688x1242
+      Встроенная память (Гб): 512
+      Цвет: золотистый
   - id: 4216313
     category: 224
     model: apple/iphone/xr
@@ -30,10 +30,10 @@ goods:
     price_rrc: 69990
     quantity: 9
     parameters:
-      "Диагональ (дюйм)": 6.1
-      "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
-      "Цвет": красный
+      Диагональ (дюйм): 6.1
+      Разрешение (пикс): 1792x828
+      Встроенная память (Гб): 256
+      Цвет: красный
   - id: 4216226
     category: 224
     model: apple/iphone/xr
@@ -42,10 +42,10 @@ goods:
     price_rrc: 69990
     quantity: 5
     parameters:
-      "Диагональ (дюйм)": 6.1
-      "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
-      "Цвет": черный
+      Диагональ (дюйм): 6.1
+      Разрешение (пикс): 1792x828
+      Встроенная память (Гб): 256
+      Цвет: черный
   - id: 4672670
     category: 224
     model: apple/iphone/xr
@@ -54,10 +54,10 @@ goods:
     price_rrc: 64990
     quantity: 7
     parameters:
-      "Диагональ (дюйм)": 6.1
-      "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
-      "Цвет": синий
+      Диагональ (дюйм): 6.1
+      Разрешение (пикс): 1792x828
+      Встроенная память (Гб): 256
+      Цвет: синий
   - id: 1234567
     category: 15
     model: samsung/galaxy-s20
@@ -66,10 +66,10 @@ goods:
     price_rrc: 84990
     quantity: 5
     parameters:
-      "Screen Size (inches)": 6.2
-      "Resolution (pixels)": 3200x1440
-      "Internal Memory (GB)": 128
-      "Color": black
+      Screen Size (inches): 6.2
+      Resolution (pixels): 3200x1440
+      Internal Memory (GB): 128
+      Color: black
   - id: 1234568
     category: 15
     model: samsung/galaxy-note20
@@ -78,10 +78,10 @@ goods:
     price_rrc: 99990
     quantity: 3
     parameters:
-      "Screen Size (inches)": 6.7
-      "Resolution (pixels)": 2400x1080
-      "Internal Memory (GB)": 256
-      "Color": mystic bronze
+      Screen Size (inches): 6.7
+      Resolution (pixels): 2400x1080
+      Internal Memory (GB): 256
+      Color: mystic bronze
   - id: 1235464569
     category: 1
     model: sandisk/ultra-flair-64gb
@@ -90,8 +90,8 @@ goods:
     price_rrc: 1990
     quantity: 10
     parameters:
-      "Capacity (GB)": 64
-      "Color": silver
+      Capacity (GB): 64
+      Color: silver
   - id: 1235434570
     category: 1
     model: kingston/datatraveler-32gb
@@ -100,8 +100,8 @@ goods:
     price_rrc: 1290
     quantity: 8
     parameters:
-      "Capacity (GB)": 32
-      "Color": red
+      Capacity (GB): 32
+      Color: red
   - id: 123544571
     category: 224
     model: xiaomi/mi-10t-pro
@@ -110,10 +110,10 @@ goods:
     price_rrc: 74990
     quantity: 6
     parameters:
-      "Screen Size (inches)": 6.67
-      "Resolution (pixels)": 2400x1080
-      "Internal Memory (GB)": 256
-      "Color": cosmic black
+      Screen Size (inches): 6.67
+      Resolution (pixels): 2400x1080
+      Internal Memory (GB): 256
+      Color: cosmic black
   - id: 1234572
     category: 5
     model: samsung/qled-q90r
@@ -122,9 +122,9 @@ goods:
     price_rrc: 2999
     quantity: 4
     parameters:
-      "Screen Size (inches)": 65
-      "Resolution (pixels)": 3840x2160
-      "Smart TV": true
+      Screen Size (inches): 65
+      Resolution (pixels): 3840x2160
+      Smart TV: true
   - id: 123476573
     category: 5
     model: lg/oled-cx
@@ -133,9 +133,9 @@ goods:
     price_rrc: 1999
     quantity: 7
     parameters:
-      "Screen Size (inches)": 55
-      "Resolution (pixels)": 3840x2160
-      "Smart TV": true
+      Screen Size (inches): 55
+      Resolution (pixels): 3840x2160
+      Smart TV: true
   - id: 1234453574
     category: 5
     model: sony/bravia-x900h
@@ -144,9 +144,9 @@ goods:
     price_rrc: 3499
     quantity: 3
     parameters:
-      "Screen Size (inches)": 75
-      "Resolution (pixels)": 3840x2160
-      "Smart TV": true
+      Screen Size (inches): 75
+      Resolution (pixels): 3840x2160
+      Smart TV: true
   - id: 123234575
     category: 5
     model: tcl/6-series
@@ -155,9 +155,9 @@ goods:
     price_rrc: 799
     quantity: 10
     parameters:
-      "Screen Size (inches)": 55
-      "Resolution (pixels)": 3840x2160
-      "Smart TV": true
+      Screen Size (inches): 55
+      Resolution (pixels): 3840x2160
+      Smart TV: true
   - id: 123424576
     category: 5
     model: vizio/p-series-quantum
@@ -166,6 +166,6 @@ goods:
     price_rrc: 1299
     quantity: 5
     parameters:
-      "Screen Size (inches)": 65
-      "Resolution (pixels)": 3840x2160
-      "Smart TV": true
+      Screen Size (inches): 65
+      Resolution (pixels): 3840x2160
+      Smart TV: true

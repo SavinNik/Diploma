@@ -898,17 +898,27 @@ class ContactView(APIView):
             JsonResponse: JSON-ответ с результатом обновления контактной информации
         """
 
-        if 'id' in request.data:
-            if request.data['id'].isdigit():
-                contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
-                if contact:
-                    serializer = ContactUpdateSerializer(contact, data=request.data, partial=True)
-                    if serializer.is_valid():
-                        serializer.save()
-                        return JsonResponse({'Status': True})
-                    else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
+        contact_id = request.data.get('id')
+
+        if not contact_id:
+            return JsonResponse({'Status': False, 'Errors': 'Не указан ID контакта'}, status=400)
+
+        if isinstance(contact_id, str):
+            if not contact_id.isdigit():
+                return JsonResponse({'Status': False, 'Errors': 'ID должно быть числом'}, status=400)
+        elif not isinstance(contact_id, int):
+            return JsonResponse({'Status': False, 'Errors': 'Неверный формат ID'}, status=400)
+
+        contact = Contact.objects.filter(id=contact_id, user_id=request.user.id).first()
+        if contact:
+            serializer = ContactUpdateSerializer(contact, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return JsonResponse({'Status': True})
+            else:
+                return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
 
     @swagger_auto_schema(
         operation_description='Удаление контактной информации',
