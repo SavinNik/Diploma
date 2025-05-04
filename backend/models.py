@@ -264,9 +264,9 @@ class Contact(models.Model):
     city = models.CharField(verbose_name='Город', max_length=50)
     street = models.CharField(verbose_name='Улица', max_length=50)
     house = models.CharField(verbose_name='Дом', max_length=50)
-    structure = models.CharField(verbose_name='Корпус', max_length=50)
-    buildings = models.CharField(verbose_name='Строение', max_length=50)
-    apartment = models.CharField(verbose_name='Квартира', max_length=50)
+    structure = models.CharField(verbose_name='Корпус', max_length=50, blank=True, null=True)
+    building = models.CharField(verbose_name='Строение', max_length=50, blank=True, null=True)
+    apartment = models.CharField(verbose_name='Квартира', max_length=50, blank=True, null=True)
     phone = models.CharField(verbose_name='Телефон', max_length=50)
 
     class Meta:

@@ -160,7 +160,7 @@ class ContactAdmin(admin.ModelAdmin):
         search_fields: Поля для поиска контактов
         list_filter: Поля для фильтрации списка контактов
     """
-    list_display = ('user', 'city', 'street', 'house', 'structure', 'buildings', 'apartment', 'phone')
+    list_display = ('user', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone')
     search_fields = ('user__email', 'city', 'street')
     list_filter = ('user',)
 

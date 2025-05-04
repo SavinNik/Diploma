@@ -27,10 +27,25 @@ class ContactSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contact
-        fields = ('id', 'city', 'street', 'house', 'structure', 'buildings', 'apartment', 'phone', 'user')
+        fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'user', 'phone')
         read_only_fields = ('id',)
         extra_kwargs = {
             'user': {'write_only': True}
+        }
+
+
+class ContactUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone')
+        extra_kwargs = {
+            'city': {'required': False},
+            'street': {'required': False},
+            'house': {'required': False},
+            'phone': {'required': False},
+            'structure': {'required': False},
+            'building': {'required': False},
+            'apartment': {'required': False}
         }
 
 

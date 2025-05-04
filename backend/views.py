@@ -2,7 +2,6 @@ import json
 
 from celery.result import AsyncResult
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
@@ -14,7 +13,7 @@ from django.http import JsonResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,7 +22,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from backend.models import Category, Shop, ProductInfo, Order, OrderItem, Contact
 from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoSerializer, OrderItemSerializer, \
-    OrderSerializer, ContactSerializer, UserSerializer, CustomTokenObtainPairSerializer
+    OrderSerializer, ContactSerializer, UserSerializer, CustomTokenObtainPairSerializer, ContactUpdateSerializer
 from backend.signals import new_order
 from backend.tasks import do_import, send_email
 from backend.utils import string_to_bool
@@ -37,6 +36,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterAccount(APIView):
+    permission_classes = [AllowAny]
     """
     Класс для регистрации пользователя
     """
@@ -101,6 +101,7 @@ class RegisterAccount(APIView):
 
 
 class ConfirmAccount(APIView):
+    permission_classes = [AllowAny]
     """
     Класс для подтверждения аккаунта
     """
@@ -228,6 +229,7 @@ class AccountDetails(APIView):
 
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
     """
     Класс для авторизации пользователя
     """
@@ -265,7 +267,7 @@ class LoginView(APIView):
         # Проверка обязательных полей
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(email=request.data['email'], password=request.data['password'])
-            if user is not None:
+            if user is not None and user.is_active:
                 refresh = RefreshToken.for_user(user)
                 return JsonResponse({'Status': True,
                                      'Refresh': str(refresh),
@@ -817,7 +819,19 @@ class ContactView(APIView):
 
     @swagger_auto_schema(
         operation_description='Добавление контактной информации',
-        request_body=ContactSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'city': openapi.Schema(type=openapi.TYPE_STRING, description='Город'),
+                'street': openapi.Schema(type=openapi.TYPE_STRING, description='Улица'),
+                'house': openapi.Schema(type=openapi.TYPE_STRING, description='Дом'),
+                'structure': openapi.Schema(type=openapi.TYPE_STRING, description='Корпус (опционально)'),
+                'building': openapi.Schema(type=openapi.TYPE_STRING, description='Строение (опционально)'),
+                'apartment': openapi.Schema(type=openapi.TYPE_STRING, description='Квартира (опционально)'),
+                'phone': openapi.Schema(type=openapi.TYPE_STRING, description='Номер телефона'),
+            },
+            required=['city', 'street', 'phone']
+        ),
         responses={
             200: 'Успешное добавление контакта',
             400: 'Ошибка добавления контакта',
@@ -839,7 +853,6 @@ class ContactView(APIView):
         """
 
         if {'city', 'street', 'phone'}.issubset(request.data):
-            request.data._mutable = True
             request.data.update({'user': request.user.id})
             serializer = ContactSerializer(data=request.data)
             if serializer.is_valid():
@@ -851,7 +864,20 @@ class ContactView(APIView):
 
     @swagger_auto_schema(
         operation_description='Обновление контактной информации',
-        request_body=ContactSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID контакта'),
+                'city': openapi.Schema(type=openapi.TYPE_STRING, description='Город'),
+                'street': openapi.Schema(type=openapi.TYPE_STRING, description='Улица'),
+                'house': openapi.Schema(type=openapi.TYPE_STRING, description='Дом'),
+                'structure': openapi.Schema(type=openapi.TYPE_STRING, description='Корпус'),
+                'building': openapi.Schema(type=openapi.TYPE_STRING, description='Строение'),
+                'apartment': openapi.Schema(type=openapi.TYPE_STRING, description='Квартира'),
+                'phone': openapi.Schema(type=openapi.TYPE_STRING, description='Телефон'),
+            },
+            required=['id'],
+        ),
         responses={
             200: 'Успешное обновление контактной информации',
             400: 'Ошибка обновления контактной информации',
@@ -876,7 +902,7 @@ class ContactView(APIView):
             if request.data['id'].isdigit():
                 contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
                 if contact:
-                    serializer = ContactSerializer(contact, data=request.data, partial=True)
+                    serializer = ContactUpdateSerializer(contact, data=request.data, partial=True)
                     if serializer.is_valid():
                         serializer.save()
                         return JsonResponse({'Status': True})
@@ -1056,7 +1082,7 @@ class SendEmailView(APIView):
 
 
 class TaskStatusView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     """
     Класс для получения статуса задачи
     """
