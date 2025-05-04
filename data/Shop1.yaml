@@ -117,7 +117,7 @@ goods:
   - id: 1234572
     category: 5
     model: samsung/qled-q90r
-    name: Samsung QLED Q90R 65" 4K UHD Smart TV
+    name: Samsung QLED Q90R 65\" 4K UHD Smart TV
     price: 2500
     price_rrc: 2999
     quantity: 4
@@ -128,7 +128,7 @@ goods:
   - id: 123476573
     category: 5
     model: lg/oled-cx
-    name: LG OLED CX 55" 4K UHD Smart TV
+    name: LG OLED CX 55\" 4K UHD Smart TV
     price: 1800
     price_rrc: 1999
     quantity: 7
@@ -139,7 +139,7 @@ goods:
   - id: 1234453574
     category: 5
     model: sony/bravia-x900h
-    name: Sony Bravia X900H 75" 4K UHD Smart TV
+    name: Sony Bravia X900H 75\" 4K UHD Smart TV
     price: 3000
     price_rrc: 3499
     quantity: 3
@@ -150,7 +150,7 @@ goods:
   - id: 123234575
     category: 5
     model: tcl/6-series
-    name: TCL 6-Series 55" 4K UHD Smart TV
+    name: TCL 6-Series 55\" 4K UHD Smart TV
     price: 700
     price_rrc: 799
     quantity: 10
@@ -161,7 +161,7 @@ goods:
   - id: 123424576
     category: 5
     model: vizio/p-series-quantum
-    name: Vizio P-Series Quantum 65" 4K UHD Smart TV
+    name: Vizio P-Series Quantum 65\" 4K UHD Smart TV
     price: 1200
     price_rrc: 1299
     quantity: 5

@@ -673,7 +673,7 @@ class PartnerUpdate(APIView, AccessMixin):
                 validate_url(url)
             except ValidationError:
                 return JsonResponse({'Status': False, 'Error': 'Неверный URL'}, status=400)
-            task = do_import.delay(url)
+            task = do_import.delay(url, user_id=request.user.id)
             return JsonResponse({'Status': True, 'Task': str(task), 'Task ID': task.id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}, status=400)
 

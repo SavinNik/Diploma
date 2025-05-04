@@ -30,13 +30,14 @@ def send_email(subject, message, from_email, recipient_list):
 
 
 @shared_task(bind=True, max_retries=3)
-def do_import(self, url):
+def do_import(self, url, user_id=None):
     """
     Импорт данных из YAML-файла
 
     Args:
         self: Экземпляр задачи Celery
         url: URL-адрес YAML-файла
+        user_id: id авторизированного пользователя
     """
     try:
         if not url:
@@ -51,17 +52,19 @@ def do_import(self, url):
         response.raise_for_status()
 
         stream = response.content
-        data = load_yaml(stream, Loader=Loader)
+        data = yaml.safe_load(stream)
 
         # Проверка наличия необходимых данных
-        required_fields = ['user_id', 'shop', 'categories', 'goods']
+        required_fields = ['shop', 'categories', 'goods']
         for field in required_fields:
             if field not in data:
                 raise KeyError(f"Отсутствует обязательное поле: {field}")
 
         # Получаем пользователя
+        if user_id is None:
+            raise ValueError('Пользователь не указан')
         try:
-            user = User.objects.get(id=data['user_id'], user_type='shop')
+            user = User.objects.get(id=user_id, user_type='shop')
         except ObjectDoesNotExist:
             raise ValueError("Пользователь не найден")
 
@@ -89,7 +92,7 @@ def do_import(self, url):
 
             for item in data['goods']:
                 # Проверка обязательных полей товара
-                required_item_fields = ['id', 'category_id', 'model', 'quantity', 'price', 'price_rrc']
+                required_item_fields = ['id', 'category', 'model', 'quantity', 'price', 'price_rrc']
                 for field in required_item_fields:
                     if field not in item:
                         raise KeyError(f"Отсутствует поле в товаре: {field}")
@@ -101,7 +104,7 @@ def do_import(self, url):
                 # Создание/обновление продукта
                 product, _ = Product.objects.get_or_create(
                     name=item['name'],
-                    defaults={'category_id': item['category_id']}
+                    defaults={'category': item['category']}
                 )
 
                 # Создание/обновление информации о продукте
