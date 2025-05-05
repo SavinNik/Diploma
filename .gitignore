@@ -3,3 +3,4 @@
 *~
 debug.log
 celerybeat-schedule
+__pycache__

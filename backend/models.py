@@ -164,7 +164,7 @@ class Category(models.Model):
     Модель категории
     """
     objects = models.Manager()
-    name = models.CharField(verbose_name='Название категории', max_length=50)
+    name = models.CharField(verbose_name='Название категории', max_length=255)
     shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories', blank=True)
 
     class Meta:
@@ -181,7 +181,7 @@ class Product(models.Model):
     Модель продукта
     """
     objects = models.Manager()
-    name = models.CharField(verbose_name='Название продукта', max_length=50)
+    name = models.CharField(verbose_name='Название продукта', max_length=255)
     category = models.ForeignKey(Category, verbose_name='Категория', related_name='products', on_delete=models.CASCADE,
                                  blank=True)
 
@@ -204,7 +204,7 @@ class ProductInfo(models.Model):
     Содержит данные о наличии, цене и других характеристиках продукта.
     """
     objects = models.Manager()
-    model = models.CharField(verbose_name='Модель', max_length=50, blank=True)
+    model = models.CharField(verbose_name='Модель', max_length=255, blank=True)
     external_id = models.PositiveIntegerField(verbose_name='Внешний идентификатор', unique=True, db_index=True)
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, verbose_name='Магазин', related_name='product_infos', on_delete=models.CASCADE)
@@ -225,7 +225,7 @@ class Parameter(models.Model):
     Модель параметра продукта
     """
     objects = models.Manager()
-    name = models.CharField(verbose_name='Название параметра', max_length=50)
+    name = models.CharField(verbose_name='Название параметра', max_length=255)
 
     class Meta:
         verbose_name = 'Параметр'

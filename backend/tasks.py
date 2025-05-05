@@ -8,7 +8,6 @@ from django.utils import timezone
 
 from backend.models import ProductInfo, Shop, Category, Parameter, ProductParameter, Product, User
 import yaml
-from yaml import load as load_yaml, Loader
 from backend.utils import validate_url
 
 logger = logging.getLogger(__name__)
@@ -43,82 +42,78 @@ def do_import(self, url, user_id=None):
         if not url:
             raise ValueError("URL не указан")
 
-        # Валидация URL
         if not validate_url(url):
             raise ValidationError("Неверный URL")
 
-        # Получение данных
         response = requests.get(url, timeout=5)
         response.raise_for_status()
 
-        stream = response.content
-        data = yaml.safe_load(stream)
+        data = yaml.safe_load(response.content)
 
-        # Проверка наличия необходимых данных
         required_fields = ['shop', 'categories', 'goods']
         for field in required_fields:
             if field not in data:
                 raise KeyError(f"Отсутствует обязательное поле: {field}")
 
-        # Получаем пользователя
         if user_id is None:
             raise ValueError('Пользователь не указан')
         try:
             user = User.objects.get(id=user_id, user_type='shop')
         except ObjectDoesNotExist:
-            raise ValueError("Пользователь не найден")
+            raise ValueError("Пользователь не найден или не является магазином")
 
-        # Создаем магазин
-        shop, _ = Shop.objects.get_or_create(
-            name=data['shop'],
-            user=user
-        )
+        # Создаем/обновляем магазин
+        shop, created = Shop.objects.get_or_create(name=data['shop'], defaults={'user': user})
+        if not created and shop.user != user:
+            raise PermissionError("Этот магазин принадлежит другому пользователю")
 
         # Обработка категорий
-        for category in data['categories']:
-            category_obj, created = Category.objects.get_or_create(
-                id=category['id'],
-                defaults={'name': category['name']}
+        for category_data in data['categories']:
+            Category.objects.get_or_create(
+                id=category_data['id'],
+                defaults={'name': category_data['name']}
             )
-            if not created:
-                category_obj.name = category['name']
-                category_obj.save()
-            category_obj.shops.add(shop)
 
-        # Импорт товаров в транзакции
+        # Обработка товаров
         with transaction.atomic():
-            # Очистка старых данных
             ProductInfo.objects.filter(shop=shop).delete()
 
             for item in data['goods']:
-                # Проверка обязательных полей товара
-                required_item_fields = ['id', 'category', 'model', 'quantity', 'price', 'price_rrc']
+                # Проверка обязательных полей
+                required_item_fields = ['id', 'category', 'model', 'quantity', 'price', 'price_rrc', 'name']
                 for field in required_item_fields:
                     if field not in item:
                         raise KeyError(f"Отсутствует поле в товаре: {field}")
 
-                # Проверка типов данных
-                if not isinstance(item['quantity'], int) or item['quantity'] <= 0:
-                    raise ValueError(f"Некорректное количество: {item['quantity']}")
+                # Получаем категорию как объект
+                category_id = item['category']
+                try:
+                    category = Category.objects.get(id=category_id)
+                except Exception:
+                    logger.warning(f"Категория с ID {category_id} не найдена")
+                    continue
 
-                # Создание/обновление продукта
+                # Создаем продукт
                 product, _ = Product.objects.get_or_create(
                     name=item['name'],
-                    defaults={'category': item['category']}
+                    defaults={'category': category}
                 )
+                if product.category != category:
+                    product.category = category
+                    product.save()
 
-                # Создание/обновление информации о продукте
+                # Создаем информацию о товаре
                 product_info = ProductInfo.objects.create(
                     product=product,
                     shop=shop,
                     model=item['model'],
-                    quantity=item['quantity'],
+                    external_id=item['id'],
                     price=item['price'],
                     price_rrc=item['price_rrc'],
-                    external_id=item['id']
+                    quantity=item['quantity']
                 )
 
-                # Обработка параметров
+                # Добавляем параметры
                 if 'parameters' in item:
                     for name, value in item['parameters'].items():
                         parameter, _ = Parameter.objects.get_or_create(name=name)
@@ -128,26 +123,21 @@ def do_import(self, url, user_id=None):
                             value=value
                         )
 
-        return {'Status': True, 'Message': 'Данные успешно импортированы'}
+        return {'Status': True}
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Сетевая ошибка: {str(e)}", exc_info=True)
+    except requests.RequestException as e:
+        logger.error(f"Ошибка загрузки файла: {e}")
         if self.request.retries < self.max_retries:
             self.retry(exc=e, countdown=2 ** self.request.retries)
-        return {'Status': False, 'Error': f'Сетевая ошибка: {str(e)}'}
+        return {'Status': False, 'Error': f'Не удалось загрузить файл: {str(e)}'}
+
+    except yaml.YAMLError as e:
+        logger.error(f"Ошибка парсинга YAML: {e}")
+        return {'Status': False, 'Error': 'Файл имеет неверный формат YAML'}
 
     except Exception as e:
-        logger.error(f"Ошибка импорта: {str(e)}", exc_info=True)
-
-        # Фатальные ошибки (неверные данные)
-        if isinstance(e, (KeyError, ValueError, TypeError)):
-            return {'Status': False, 'Error': str(e)}
-
-        # Повторные попытки для временных ошибок
-        if self.request.retries < self.max_retries:
-            self.retry(exc=e, countdown=2 ** self.request.retries)
-
-        return {'Status': False, 'Error': f'Импорт не удался после {self.max_retries} попыток: {str(e)}'}
+        logger.error(f"Критическая ошибка импорта: {e}", exc_info=True)
+        return {'Status': False, 'Error': str(e)}
 
 
 @shared_task(bind=True, max_retries=3)
