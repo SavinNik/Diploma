@@ -1,6 +1,7 @@
 import json
 
 from celery.result import AsyncResult
+from django.shortcuts import render
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -919,7 +920,6 @@ class ContactView(APIView):
                 return JsonResponse({'Status': False, 'Errors': serializer.errors})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-
     @swagger_auto_schema(
         operation_description='Удаление контактной информации',
         request_body=openapi.Schema(
@@ -1118,10 +1118,21 @@ class TaskStatusView(APIView):
         Returns:
             JsonResponse: JSON-ответ с результатом получения статуса задачи
         """
-        task_result = AsyncResult(task_id)
-        result = {
+        if not task_id:
+            return JsonResponse({'Status': False, 'Error': 'Не указан ID задачи'}, status=400)
+
+        result = AsyncResult(task_id)
+        context = {
             'task_id': task_id,
-            'task_status': task_result.status,
-            'task_result': task_result.result
+            'status': result.state,
+            'result': result.result if isinstance(result.result, (str, dict)) else str(result.result),
+            'ready': result.ready(),
+            'successful': result.successful() if result.ready() else False
         }
-        return JsonResponse(result)
+
+        if request.path.startswith('/task/status/'):
+            return render(request, 'admin/task_status.html', context)
+
+        return JsonResponse(context)
+
+

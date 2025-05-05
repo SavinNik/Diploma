@@ -328,3 +328,12 @@ class ResetPasswordToken(models.Model):
     class Meta:
         verbose_name = 'Токен для сброса пароля'
         verbose_name_plural = 'Список токенов для сброса паролей'
+
+
+from django.db import models
+
+class TaskStatus(models.Model):
+    class Meta:
+        verbose_name = 'Запуск задачи'
+        verbose_name_plural = 'Запуск задач'
+        managed = False  # Не создаём таблицу

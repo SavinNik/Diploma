@@ -206,15 +206,15 @@ def do_export(self, shop_id):
             data['goods'].append(goods_data)
 
         # Подготовка и сохранение YAML
-        yaml_file_path = f"exports/{shop.name}_export.yaml"
+        yaml_file_path = f"export_data/{shop.name}_export.yaml"
 
         try:
             # 8. Проверка доступности пути
             from django.core.files.storage import default_storage
             from django.core.files.base import ContentFile
 
-            if not default_storage.exists('exports/'):
-                default_storage.makedirs('exports/')
+            if not default_storage.exists('export_data/'):
+                default_storage.makedirs('export/')
 
             # Сохранение файла
             yaml_content = yaml.dump(data, allow_unicode=True, Dumper=yaml.SafeDumper)

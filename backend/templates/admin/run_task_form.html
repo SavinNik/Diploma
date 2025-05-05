@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h2>{{ title }}</h2>
+
+<form method="post">
+    {% csrf_token %}
+    <label for="id_url">URL:</label>
+    <input type="text" id="id_url" name="url" style="width: 400px;" required />
+    <button type="submit">Запустить импорт</button>
+</form>
+
+<p><a href="{% url 'admin:app_list' app_label='backend' %}">Назад</a></p>
+
+{% endblock %}

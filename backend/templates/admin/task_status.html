@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Статус задачи {{ task_id }}</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .result { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+<h1>Статус задачи</h1>
+<p><strong>ID задачи:</strong> {{ task_id }}</p>
+<p><strong>Статус:</strong> {{ task_status }}</p>
+{% if ready %}
+    <p><strong>Готово:</strong> {% if successful %}✅ Успешно{% elif failed %}❌ Неудача{% endif %}</p>
+    <div class="result"><strong>Результат:</strong><br>{{ task_result }}</div>
+{% else %}
+    <p>Задача ещё выполняется...</p>
+{% endif %}
+
+<a href="/">На главную</a>
+
+</body>
+</html>
