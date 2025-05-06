@@ -1,9 +1,9 @@
 import json
 
 from celery.result import AsyncResult
+
 from django.shortcuts import render
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.validators import URLValidator
@@ -11,8 +11,10 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import Q, F, Sum
 from django.http import JsonResponse
+
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -27,8 +29,8 @@ from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoS
     OrderSerializer, ContactSerializer, UserSerializer, CustomTokenObtainPairSerializer, ContactUpdateSerializer
 from backend.signals import new_order
 from backend.tasks import do_import, send_email
-from backend.utils import string_to_bool
-from .utils import AccessMixin
+from backend.utils import string_to_bool, AccessMixin
+
 
 User = get_user_model()
 
@@ -114,9 +116,11 @@ class ConfirmAccount(APIView):
             type=openapi.TYPE_OBJECT,
             required=['email', 'token'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL,
+                'email': openapi.Schema(type=openapi.TYPE_STRING,
+                                        format=openapi.FORMAT_EMAIL,
                                         description='Почтовый адрес'),
-                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен подтверждения')
+                'token': openapi.Schema(type=openapi.TYPE_STRING,
+                                        description='Токен подтверждения')
             }
         ),
         responses={
@@ -171,7 +175,10 @@ class AccountDetails(APIView):
     """
 
     @swagger_auto_schema(
-        responses={200: UserSerializer, 403: 'Неавторизованный пользователь'},
+        responses={
+            200: UserSerializer,
+            403: 'Неавторизованный пользователь'
+        },
         security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
@@ -242,9 +249,11 @@ class LoginView(APIView):
             type=openapi.TYPE_OBJECT,
             required=['email', 'password'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL,
+                'email': openapi.Schema(type=openapi.TYPE_STRING,
+                                        format=openapi.FORMAT_EMAIL,
                                         description='Почтовый адрес'),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль')
+                'password': openapi.Schema(type=openapi.TYPE_STRING,
+                                           description='Пароль')
             }
         ),
         responses={
@@ -291,8 +300,10 @@ class CategoryView(ListAPIView):
 
     @swagger_auto_schema(
         operation_description="Получение списка категорий",
-        responses={200: CategorySerializer(many=True),
-                   403: 'Неавторизованный пользователь'},
+        responses={
+            200: CategorySerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        },
         security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
@@ -319,8 +330,10 @@ class ShopView(ListAPIView):
     pagination_class = PageNumberPagination
 
     @swagger_auto_schema(
-        responses={200: ShopSerializer(many=True),
-                   403: 'Неавторизованный пользователь'},
+        responses={
+            200: ShopSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        },
         security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
@@ -403,7 +416,10 @@ class BasketView(APIView):
     @swagger_auto_schema(
         operation_description="Получение корзины пользователя",
         responses={
-            200: OrderItemSerializer(many=True),
+            200: openapi.Response(
+                description='Данные корзины пользователя',
+                schema=OrderItemSerializer(many=True)
+            ),
             403: 'Неавторизованный пользователь'
         },
         security=[{'Bearer': []}]
@@ -438,37 +454,50 @@ class BasketView(APIView):
             required=['items'],
             properties={
                 'items': openapi.Schema(
-                    type=openapi.TYPE_ARRAY, description='JSON-строка с элементами корзины',
+                    type=openapi.TYPE_ARRAY,
+                    description="Массив товаров с ID и количеством",
                     items=openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
                             'product_info': openapi.Schema(
-                                type=openapi.TYPE_INTEGER, description='ID продукта'
+                                type=openapi.TYPE_INTEGER,
+                                description="ID товара"
                             ),
                             'quantity': openapi.Schema(
-                                type=openapi.TYPE_INTEGER, description='Количество'
+                                type=openapi.TYPE_INTEGER,
+                                description="Количество товара"
                             )
-                        }
-                    ),
-                )
-            },
-            responses={
-                200: openapi.Response(
-                    description='Товары успешно добавлены в корзину',
-                    schema=openapi.Schema(
-                        type=openapi.TYPE_OBJECT,
-                        properties={
-                            'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
-                            'Создано объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
-                                                               description='Количество созданных объектов')
-                        }
+                        },
+                        required=['product_info', 'quantity']
                     )
-                ),
-                400: 'Ошибка добавления товаров в корзину',
-                403: 'Неавторизованный пользователь'
-            },
-            security=[{'Bearer': []}]
+                )
+            }
         ),
+        responses={
+            200: openapi.Response(
+                description="Товары успешно добавлены в корзину",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'Создано объектов': openapi.Schema(type=openapi.TYPE_INTEGER)
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="Ошибка валидации данных",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'Error': openapi.Schema(type=openapi.TYPE_STRING),
+                        'Errors': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            403: "Неавторизованный пользователь"
+        },
+        security=[{'Bearer': []}]
     )
     def post(self, request: Request, *args, **kwargs):
         """
@@ -506,7 +535,8 @@ class BasketView(APIView):
             required=['items'],
             properties={
                 'items': openapi.Schema(
-                    type=openapi.TYPE_STRING, description='JSON-строка с элементами корзины',
+                    type=openapi.TYPE_STRING,
+                    description='JSON-строка с элементами корзины',
                 )
             },
         ),
@@ -516,7 +546,8 @@ class BasketView(APIView):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN,
+                                                 description='Статус выполнения задачи'),
                         'Удалено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
                                                            description='Количество удаленных объектов')
                     }
@@ -563,31 +594,47 @@ class BasketView(APIView):
             properties={
                 'items': openapi.Schema(
                     type=openapi.TYPE_ARRAY,
-                    description='JSON строка с элементами корзины для обновления',
+                    description="Массив товаров с ID и новым количеством",
                     items=openapi.Schema(
                         type=openapi.TYPE_OBJECT,
                         properties={
-                            'id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID товара'),
-                            'quantity': openapi.Schema(type=openapi.TYPE_INTEGER, description='Новое количество товара')
-                        }
+                            'id': openapi.Schema(
+                                type=openapi.TYPE_INTEGER,
+                                description="ID товара в корзине"
+                            ),
+                            'quantity': openapi.Schema(
+                                type=openapi.TYPE_INTEGER,
+                                description="Новое количество товара"
+                            )
+                        },
+                        required=['id', 'quantity']
                     )
                 )
             }
         ),
         responses={
             200: openapi.Response(
-                description='Успешное обновление количества товаров в корзине',
+                description="Количество товара успешно обновлено",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
-                        'Обновлено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
-                                                             description='Количество обновленных объектов')
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'Обновлено объектов': openapi.Schema(type=openapi.TYPE_INTEGER)
                     }
                 )
             ),
-            400: 'Ошибка обновления количества товаров в корзине',
-            403: 'Неавторизованный пользователь'
+            400: openapi.Response(
+                description="Ошибка валидации данных",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'Error': openapi.Schema(type=openapi.TYPE_STRING),
+                        'Errors': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            403: "Неавторизованный пользователь"
         },
         security=[{'Bearer': []}]
     )
@@ -633,7 +680,8 @@ class PartnerUpdate(APIView, AccessMixin):
             type=openapi.TYPE_OBJECT,
             required=['url'],
             properties={
-                'url': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI,
+                'url': openapi.Schema(type=openapi.TYPE_STRING,
+                                      format=openapi.FORMAT_URI,
                                       description='URL для обновления прайса')
             }
         ),
@@ -689,7 +737,10 @@ class PartnerState(APIView, AccessMixin):
     """
 
     @swagger_auto_schema(
-        responses={200: ShopSerializer, 403: 'Неавторизованный пользователь'},
+        responses={
+            200: ShopSerializer,
+            403: 'Неавторизованный пользователь'
+        },
         security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
@@ -719,10 +770,14 @@ class PartnerState(APIView, AccessMixin):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'state': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус партнера')
+                'state': openapi.Schema(type=openapi.TYPE_BOOLEAN,
+                                        description='Статус партнера')
             },
-            responses={200: 'Успешное обновление статуса партнера', 400: 'Ошибка обновления статуса партнера',
-                       403: 'Неавторизованный пользователь'},
+            responses={
+                200: 'Успешное обновление статуса партнера',
+                400: 'Ошибка обновления статуса партнера',
+                403: 'Неавторизованный пользователь'
+            },
             security=[{'Bearer': []}]
         ),
     )
@@ -760,7 +815,10 @@ class PartnerOrders(APIView, AccessMixin):
     """
 
     @swagger_auto_schema(
-        responses={200: OrderSerializer(many=True), 403: 'Неавторизованный пользователь'},
+        responses={
+            200: OrderSerializer(many=True),
+            403: 'Неавторизованный пользователь'
+        },
         security=[{'Bearer': []}]
     )
     def get(self, request: Request, *args, **kwargs):
@@ -929,7 +987,8 @@ class ContactView(APIView):
             type=openapi.TYPE_OBJECT,
             required=['items'],
             properties={
-                'items': openapi.Schema(type=openapi.TYPE_STRING, description='Список ID контактов для удаления')
+                'items': openapi.Schema(type=openapi.TYPE_STRING,
+                                        description='Список ID контактов для удаления')
             },
         ),
         responses={
@@ -938,7 +997,8 @@ class ContactView(APIView):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Статус выполнения задачи'),
+                        'Status': openapi.Schema(type=openapi.TYPE_BOOLEAN,
+                                                 description='Статус выполнения задачи'),
                         'Удалено объектов': openapi.Schema(type=openapi.TYPE_INTEGER,
                                                            description='Количество удаленных объектов')
                     }

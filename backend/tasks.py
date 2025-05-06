@@ -4,7 +4,9 @@ from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import transaction
+from django.http import JsonResponse
 from django.utils import timezone
+from requests import RequestException
 
 from backend.models import ProductInfo, Shop, Category, Parameter, ProductParameter, Product, User
 import yaml
@@ -45,8 +47,11 @@ def do_import(self, url, user_id=None):
         if not validate_url(url):
             raise ValidationError("Неверный URL")
 
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+        except RequestException as e:
+            return JsonResponse({'status': False, 'Ошибка загрузки данных': str(e)})
 
         data = yaml.safe_load(response.content)
 
