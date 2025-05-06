@@ -7,7 +7,7 @@ from django.utils.html import format_html
 
 from backend.models import User, Shop, Product, ProductInfo, Category, Order, OrderItem, Contact, \
     Parameter, ProductParameter, TaskStatus
-from tasks import do_import, do_export
+from backend.tasks import do_import, do_export
 
 
 @admin.register(User)

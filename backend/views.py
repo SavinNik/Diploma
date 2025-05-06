@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -286,6 +287,7 @@ class CategoryView(ListAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    pagination_class = PageNumberPagination
 
     @swagger_auto_schema(
         operation_description="Получение списка категорий",
@@ -314,6 +316,7 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
+    pagination_class = PageNumberPagination
 
     @swagger_auto_schema(
         responses={200: ShopSerializer(many=True),
