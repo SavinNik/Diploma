@@ -2,15 +2,12 @@
 {% load i18n %}
 
 {% block content %}
-<h2>{{ title }}</h2>
-
-<form method="post">
+  <h1>{{ title }}</h1>
+  <form method="post">
     {% csrf_token %}
-    <label for="id_url">URL:</label>
-    <input type="text" id="id_url" name="url" style="width: 400px;" required />
-    <button type="submit">Запустить импорт</button>
-</form>
-
-<p><a href="{% url 'admin:app_list' app_label='backend' %}">Назад</a></p>
-
+    <label for="url">URL для импорта:</label>
+    <input type="text" id="url" name="url" required style="width: 100%; padding: 8px; margin-top: 8px;">
+    <button type="submit" style="margin-top: 16px; padding: 10px 20px;">Запустить задачу</button>
+  </form>
+  <p><a href="{% url 'admin:app_list' app_label='backend' %}">Назад</a></p>
 {% endblock %}

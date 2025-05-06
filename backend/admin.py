@@ -6,7 +6,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 
 from backend.models import User, Shop, Product, ProductInfo, Category, Order, OrderItem, Contact, \
-    Parameter, ProductParameter, TaskStatus
+    Parameter, ProductParameter
 from backend.tasks import do_import, do_export
 
 
@@ -44,7 +44,7 @@ class ShopAdmin(admin.ModelAdmin):
         list_filter: Поля для фильтрации списка магазинов
         search_fields: Поля для поиска магазинов
     """
-    list_display = ('name', 'url', 'user', 'state', 'export_button')
+    list_display = ('name', 'url', 'user', 'state', 'export_button', 'import_button')
     list_filter = ('state',)
     search_fields = ('name', 'url')
 
@@ -55,8 +55,46 @@ class ShopAdmin(admin.ModelAdmin):
             reverse('admin:run-do-export', args=[obj.id])
         )
 
-    export_button.short_description = 'Экспорт товаров'
-    export_button.allow_tags = True  # Устаревшее, но можно оставить для совместимости
+    def import_button(self, obj):
+        return format_html(
+            '<a class="button" href="{}">📥 Импорт товаров</a>',
+            reverse('admin:run-do-import')  # Указывает на маршрут /admin/backend/shop/import/
+        )
+    import_button.short_description = 'Импорт товаров'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.run_do_import), name='run-do-import'),
+            path('export/<int:shop_id>/', self.admin_site.admin_view(self.run_do_export), name='run-do-export'),
+        ]
+        return custom_urls + urls
+
+    def run_do_import(self, request):
+        if request.method == 'POST':
+            url = request.POST.get('url')
+            if not url:
+                messages.error(request, 'URL не указан')
+                return redirect('admin:run-do-import')
+            try:
+                task = do_import.delay(url=url)
+                messages.success(request, f'Задача импорта запущена. ID задачи: {task.id}')
+            except Exception as e:
+                messages.error(request, f'Ошибка запуска задачи: {e}')
+            return redirect('admin:run-do-import')
+        return render(request, 'admin/run_task_form.html', {
+            'title': 'Импорт данных магазина',
+            'task_name': 'do_import',
+            'form_action': 'admin:run-do-import'
+        })
+
+    def run_do_export(self, request, shop_id):
+        try:
+            task = do_export.delay(shop_id=shop_id)
+            messages.success(request, f'Экспорт магазина запущен. ID задачи: {task.id}')
+        except Exception as e:
+            messages.error(request, f'Ошибка запуска задачи: {e}')
+        return redirect('admin:app_list', app_label='backend')
 
 
 @admin.register(Category)
@@ -181,47 +219,4 @@ class ContactAdmin(admin.ModelAdmin):
     list_filter = ('user',)
 
 
-@admin.register(TaskStatus)
-class TaskStatusAdmin(admin.ModelAdmin):
-    change_list_template = "admin/task_status.html"
-    model = None
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return True
-
-    def get_queryset(self, request):
-        return super().get_queryset(request)
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('import/', self.admin_site.admin_view(self.run_do_import), name='run-do-import'),
-            path('export/<int:shop_id>/', self.admin_site.admin_view(self.run_do_export), name='run-do-export'),
-        ]
-        return custom_urls + urls
-
-    def run_do_import(self, request):
-        if request.method == 'POST':
-            url = request.POST.get('url')
-            if not url:
-                messages.error(request, 'URL не указан')
-                return redirect('admin:run-do-import')
-
-            task = do_import.delay(url=url)
-            messages.success(request, f'Задача импорта запущена. ID задачи: {task.id}')
-            return redirect('admin:run-do-import')
-
-        return render(request, 'admin/run_task_form.html', {
-            'title': 'Импорт данных магазина',
-            'task_name': 'do_import',
-            'form_action': 'admin:run-do-import'
-        })
-
-    def run_do_export(self, request, shop_id):
-        task = do_export.delay(shop_id=shop_id)
-        messages.success(request, f'Экспорт магазина запущен. ID задачи: {task.id}')
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/backend/shop/'))
 
