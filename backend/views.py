@@ -395,7 +395,7 @@ class ProductInfoView(APIView):
             query = query & Q(shop_id=shop_id)
 
         if category_id:
-            query = query & Q(category_id=category_id)
+            query = query & Q(product__category_id=category_id)
 
         # Фильтруем и убираем дубликаты        
         queryset = ProductInfo.objects.filter(query).select_related(

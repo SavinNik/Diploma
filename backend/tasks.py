@@ -1,6 +1,11 @@
 import logging
+import os
+
 import requests
 from celery import shared_task
+from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.mail import EmailMultiAlternatives
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import transaction
@@ -47,6 +52,13 @@ def do_import(self, url, user_id=None):
         if not validate_url(url):
             raise ValidationError("Неверный URL")
 
+        if user_id is None:
+            raise ValueError('Пользователь не указан')
+        try:
+            user = User.objects.get(id=user_id, user_type='shop')
+        except ObjectDoesNotExist:
+            raise ValueError("Пользователь не найден или не является магазином")
+
         try:
             response = requests.get(url, timeout=5)
             response.raise_for_status()
@@ -59,13 +71,6 @@ def do_import(self, url, user_id=None):
         for field in required_fields:
             if field not in data:
                 raise KeyError(f"Отсутствует обязательное поле: {field}")
-
-        if user_id is None:
-            raise ValueError('Пользователь не указан')
-        try:
-            user = User.objects.get(id=user_id, user_type='shop')
-        except ObjectDoesNotExist:
-            raise ValueError("Пользователь не найден или не является магазином")
 
         # Создаем/обновляем магазин
         shop, created = Shop.objects.get_or_create(name=data['shop'], defaults={'user': user})
@@ -210,42 +215,57 @@ def do_export(self, shop_id):
 
             data['goods'].append(goods_data)
 
-        # Подготовка и сохранение YAML
+        # Подготовка пути к файлу
         yaml_file_path = f"export_data/{shop.name}_export.yaml"
+        export_path = os.path.join(settings.MEDIA_ROOT, 'export_data')
 
+        # Проверка существования директории и создание при необходимости
+        if not default_storage.exists('export_data/'):
+            try:
+                os.makedirs(export_path, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Не удалось создать директорию export_data: {e}")
+                return {
+                    'Status': False,
+                    'Error': 'Не удалось создать директорию для сохранения файла',
+                    'Code': 'DIRECTORY_CREATE_FAILED'
+                }
+
+        # Преобразование данных в YAML
         try:
-            # 8. Проверка доступности пути
-            from django.core.files.storage import default_storage
-            from django.core.files.base import ContentFile
-
-            if not default_storage.exists('export_data/'):
-                default_storage.makedirs('export/')
-
-            # Сохранение файла
             yaml_content = yaml.dump(data, allow_unicode=True, Dumper=yaml.SafeDumper)
-            default_storage.save(yaml_file_path, ContentFile(yaml_content))
-
-            return {
-                'Status': True,
-                'Message': 'Данные успешно экспортированы',
-                'File': yaml_file_path,
-                'ExportedAt': timezone.now().isoformat()
-            }
-
-        except Exception as storage_error:
-            logger.error(f'Ошибка сохранения файла: {str(storage_error)}', exc_info=True)
+        except Exception as e:
+            logger.error(f"Ошибка сериализации в YAML: {e}")
             return {
                 'Status': False,
-                'Error': f'Не удалось сохранить файл: {str(storage_error)}',
+                'Error': 'Ошибка преобразования данных в формат YAML',
+                'Code': 'YAML_SERIALIZE_ERROR'
+            }
+
+        # Сохранение файла
+        try:
+            default_storage.save(yaml_file_path, ContentFile(yaml_content.encode('utf-8')))
+        except Exception as e:
+            logger.error(f"Ошибка сохранения файла: {e}")
+            return {
+                'Status': False,
+                'Error': 'Не удалось сохранить файл',
                 'Code': 'FILE_SAVE_FAILED'
             }
+
+        return {
+            'Status': True,
+            'Message': 'Данные успешно экспортированы',
+            'File': yaml_file_path,
+            'ExportedAt': timezone.now().isoformat()
+        }
 
     except Exception as e:
         logger.error(f'Критическая ошибка экспорта: {str(e)}', exc_info=True)
 
         # Повторные попытки для временных ошибок
         if self.request.retries < self.max_retries:
-            countdown = 2 ** self.request.retries * 10  # Экспоненциальная задержка
+            countdown = 2 ** self.request.retries * 10  # экспоненциальная задержка
             return self.retry(exc=e, countdown=countdown)
 
         return {

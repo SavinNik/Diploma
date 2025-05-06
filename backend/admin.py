@@ -73,11 +73,21 @@ class ShopAdmin(admin.ModelAdmin):
     def run_do_import(self, request):
         if request.method == 'POST':
             url = request.POST.get('url')
+
             if not url:
                 messages.error(request, 'URL не указан')
                 return redirect('admin:run-do-import')
+
+            if not request.user.is_authenticated:
+                messages.error(request, 'Войдите в аккаунт магазина')
+                return redirect('admin:run-do-import')
+
+            if request.user.user_type != 'shop':
+                messages.error(request, 'Только для магазинов')
+                return redirect('admin:run-do-import')
+
             try:
-                task = do_import.delay(url=url)
+                task = do_import.delay(url=url, user_id=request.user.id)
                 messages.success(request, f'Задача импорта запущена. ID задачи: {task.id}')
             except Exception as e:
                 messages.error(request, f'Ошибка запуска задачи: {e}')

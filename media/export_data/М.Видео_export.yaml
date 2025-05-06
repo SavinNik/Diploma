@@ -1,0 +1,103 @@
+categories: []
+goods:
+- category_id: 224
+  id: 9999999
+  model: google/pixel-6
+  name: Смартфон Google Pixel 6 128GB (черный)
+  parameters:
+    Встроенная память (Гб): '128'
+    Диагональ (дюйм): '6.4'
+    Разрешение (пикс): 2400x1080
+    Цвет: черный
+  price: 58000
+  price_rrc: 61990
+  quantity: 8
+- category_id: 224
+  id: 9999998
+  model: oneplus/nord-ce
+  name: Смартфон OnePlus Nord CE 256GB (синий)
+  parameters:
+    Встроенная память (Гб): '256'
+    Диагональ (дюйм): '6.43'
+    Разрешение (пикс): 2400x1080
+    Цвет: синий
+  price: 45000
+  price_rrc: 48990
+  quantity: 12
+- category_id: 15
+  id: 9999997
+  model: jbl/tune-760nc
+  name: Наушники JBL Tune 760NC (черные)
+  parameters:
+    Тип: Накладные
+    Цвет: черный
+    Шумоподавление: 'True'
+  price: 9500
+  price_rrc: 10990
+  quantity: 6
+- category_id: 1
+  id: 9999996
+  model: transcend/jf-v90
+  name: USB Flash Drive Transcend JetFlash V90 128GB (черный)
+  parameters:
+    Емкость (Гб): '128'
+    Цвет: черный
+  price: 2500
+  price_rrc: 2990
+  quantity: 15
+- category_id: 5
+  id: 9999995
+  model: philips/65pug6707
+  name: Philips 65PUG6707 65\" 4K UHD Smart TV
+  parameters:
+    Smart TV: 'True'
+    Диагональ (дюйм): '65'
+    Разрешение (пикс): 3840x2160
+  price: 1300
+  price_rrc: 1499
+  quantity: 5
+- category_id: 15
+  id: 9999994
+  model: remax/ud100k
+  name: Универсальное зарядное устройство Remax UD-100K (белое)
+  parameters:
+    Тип: Зарядное устройство
+    Цвет: белый
+  price: 1800
+  price_rrc: 2190
+  quantity: 20
+- category_id: 224
+  id: 9999993
+  model: oppo/reno-8
+  name: Смартфон OPPO Reno 8 256GB (зеленый)
+  parameters:
+    Встроенная память (Гб): '256'
+    Диагональ (дюйм): '6.43'
+    Разрешение (пикс): 2400x1080
+    Цвет: зеленый
+  price: 42000
+  price_rrc: 45990
+  quantity: 10
+- category_id: 1
+  id: 9999992
+  model: silicon-power/dux-10
+  name: USB Flash Drive Silicon Power Dux 10 256GB (красный)
+  parameters:
+    Емкость (Гб): '256'
+    Цвет: красный
+  price: 3200
+  price_rrc: 3790
+  quantity: 9
+- category_id: 5
+  id: 9999991
+  model: hisense/u7h
+  name: Hisense U7H 55\" 4K UHD Smart TV
+  parameters:
+    Smart TV: 'True'
+    Диагональ (дюйм): '55'
+    Разрешение (пикс): 3840x2160
+  price: 950
+  price_rrc: 1099
+  quantity: 7
+shop: М.Видео
+user_id: 33
