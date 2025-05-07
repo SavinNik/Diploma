@@ -16,7 +16,6 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework.generics import ListAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -30,7 +29,6 @@ from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoS
 from backend.signals import new_order
 from backend.tasks import do_import, send_email
 from backend.utils import string_to_bool, AccessMixin
-
 
 User = get_user_model()
 
@@ -296,7 +294,6 @@ class CategoryView(ListAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = PageNumberPagination
 
     @swagger_auto_schema(
         operation_description="Получение списка категорий",
@@ -327,7 +324,6 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
-    pagination_class = PageNumberPagination
 
     @swagger_auto_schema(
         responses={
@@ -439,12 +435,12 @@ class BasketView(APIView):
 
         basket = Order.objects.filter(
             user_id=request.user.id, status='basket').select_related('user', 'contact').prefetch_related(
-            'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+            'order_items__product_info__product__category',
+            'order_items__product_info__product_parameters__parameter').annotate(
+            total_sum=Sum(F('order_items__quantity') * F('order_items__product_info__price'))).distinct()
 
         # Сериализируем данные
-        serializer = OrderItemSerializer(basket, many=True)
+        serializer = OrderSerializer(basket, many=True)
         return Response(serializer.data)
 
     @swagger_auto_schema(
@@ -503,30 +499,29 @@ class BasketView(APIView):
         """
         Добавление товара в корзину
         """
+        items_data = request.data.get('items')  # Получаем данные
 
-        items_ids = request.data.get('items')
-        if items_ids:
-            try:
-                items_dict = json.loads(items_ids)
-            except ValueError:
-                return JsonResponse({'Status': False, 'Error': 'Некорректный формат данных'})
+        if not items_data:
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+        if not isinstance(items_data, list):
+            return JsonResponse({'Status': False, 'Errors': 'Некорректный формат данных. Ожидается массив.'})
+
+        basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
+        objects_created = 0
+        for order_item in items_data:
+            order_item.update({'order': basket.id})
+            serializer = OrderItemSerializer(data=order_item)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                    objects_created += 1
+                except IntegrityError:
+                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
             else:
-                basket, _ = Order.objects.get_or_create(user=request.user.id, status='basket')
-                objects_created = 0
-                for order_item in items_dict:
-                    order_item.update({'order': basket.id})
-                    serializer = OrderItemSerializer(data=order_item)
-                    if serializer.is_valid():
-                        try:
-                            serializer.save()
-                            objects_created += 1
-                        except IntegrityError:
-                            return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
-                    else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
-                return JsonResponse({'Status': True, 'Создано объектов': objects_created})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': True, 'Создано объектов': objects_created})
 
     @swagger_auto_schema(
         operation_description="Удаление товара из корзины",
@@ -651,21 +646,21 @@ class BasketView(APIView):
             JsonResponse: JSON-ответ с результатом обновления количества товара в корзине
         """
 
-        items_ids = request.data.get('items')
-        if items_ids:
-            try:
-                items_dict = json.loads(items_ids)
-            except ValueError:
-                return JsonResponse({'Status': False, 'Error': 'Некорректный формат данных'})
-            else:
-                basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
-                objects_updated = 0
-                for order_item in items_dict:
-                    if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
-                            quantity=order_item['quantity'])
-                return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        items_data = request.data.get('items')  # Получаем данные
+
+        if not items_data:
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+        if not isinstance(items_data, list):
+            return JsonResponse({'Status': False, 'Errors': 'Некорректный формат данных. Ожидается массив.'})
+
+        basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
+        objects_updated = 0
+        for order_item in items_data:
+            if type(order_item['id']) == int and type(order_item['quantity']) == int:
+                objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
+                    quantity=order_item['quantity'])
+        return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
 
 
 class PartnerUpdate(APIView, AccessMixin):
@@ -1155,7 +1150,7 @@ class SendEmailView(APIView):
 
 
 class TaskStatusView(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения статуса задачи
     """
@@ -1197,5 +1192,3 @@ class TaskStatusView(APIView):
             return render(request, 'admin/task_status.html', context)
 
         return JsonResponse(context)
-
-

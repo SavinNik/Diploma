@@ -151,6 +151,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'order': {'write_only': True},
         }
 
+    def validate_quantity(self, value):
+        """
+        Проверяем, что количество > 0
+        """
+        if value <= 0:
+            raise serializers.ValidationError("Количество должно быть больше нуля.")
+        return value
+
+    def create(self, validated_data):
+        """
+        Явно создаём OrderItem с нужным количеством
+        """
+        return OrderItem.objects.create(**validated_data)
+
 
 class OrderItemCreateSerializer(OrderItemSerializer):
     """
