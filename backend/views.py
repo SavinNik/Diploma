@@ -1,5 +1,3 @@
-import json
-
 from celery.result import AsyncResult
 
 from django.shortcuts import render
@@ -162,7 +160,7 @@ class ConfirmAccount(APIView):
         except ObjectDoesNotExist:
             return JsonResponse({'Status': False, 'Errors': 'Пользователь не найден'}, status=404)
 
-        except Exception as e:
+        except Exception:
             return JsonResponse({'Status': False, 'Errors': 'Внутренняя ошибка сервера'}, status=500)
 
 
@@ -765,7 +763,7 @@ class PartnerState(APIView, AccessMixin):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'state': openapi.Schema(type=openapi.TYPE_BOOLEAN,
+                'state': openapi.Schema(type=openapi.TYPE_STRING,
                                         description='Статус партнера')
             },
             responses={
@@ -1082,22 +1080,23 @@ class OrderView(APIView):
         """
 
         if {'id', 'contact'}.issubset(request.data):
-            if request.data['id'].isdigit():
-                try:
-                    order = Order.objects.get(id=request.data['id'], user=request.user)
-                    for item in order.items.all():
-                        if item.product_info.quantity < item.quantity:
-                            return JsonResponse({'Status': False, 'Errors': 'Недостаточно товаров'})
+            basket_id = request.data.get('id')
+            contact_id = request.data.get('contact')
+            if not isinstance(basket_id, int):
+                return JsonResponse({'Status': False, 'Errors': 'ID должно быть числом'})
+            if not isinstance(contact_id, int):
+                return JsonResponse({'Status': False, 'Errors': 'Contact должно быть числом'})
 
-                    is_updated = Order.objects.filter(
-                        user_id=request.user.id, id=request.data['id']).update(
-                        contact_id=request.data['contact'], status='new')
-                except IntegrityError as error:
-                    return JsonResponse({'Status': False, 'Errors': str(error)})
-                else:
-                    if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
-                        return JsonResponse({'Status': True})
+            try:
+                is_updated = Order.objects.filter(
+                    user_id=request.user.id, id=basket_id).update(
+                    contact_id=contact_id, status='new')
+            except IntegrityError as error:
+                return JsonResponse({'Status': False, 'Errors': str(error)})
+            else:
+                if is_updated:
+                    new_order.send(sender=self.__class__, user_id=request.user.id)
+                    return JsonResponse({'Status': True})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 

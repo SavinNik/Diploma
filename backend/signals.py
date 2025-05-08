@@ -66,16 +66,18 @@ def new_order_signal(user_id: int, *args, **kwargs):
             # Обновляем статус заказа
             order.status = 'new'
             order.save()
-        # Отправляем письмо пользователю о новом заказе
+        # Получаем email администратора
+        admin_email = User.objects.filter(is_superuser=True).first().email
+        # Отправляем письмо пользователю и администратору о новом заказе
         send_email.delay(
             # Заголовок письма
-            f'Обновление статуса заказа',
+            subject='Обновление статуса заказа',
             # Текст письма
-            'Заказ сформирован',
+            message=f'Заказ сформирован{order.objects.all()}',
             # Отправитель
-            settings.EMAIL_HOST_USER,
+            from_email=settings.EMAIL_HOST_USER,
             # Получатели
-            [user.email]
+            recipient_list=[user.email, admin_email]
         )
     except Exception as e:
         logger.error(f'При отправке письма произошла ошибка: {e}')

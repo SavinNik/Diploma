@@ -1,7 +1,6 @@
 from django.contrib import admin, messages
 from django.urls import path, reverse
-from django.http import HttpResponseRedirect
-from django.shortcuts import redirect,render
+from django.shortcuts import redirect, render
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 
@@ -227,6 +226,3 @@ class ContactAdmin(admin.ModelAdmin):
     list_display = ('user', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone')
     search_fields = ('user__email', 'city', 'street')
     list_filter = ('user',)
-
-
-

@@ -47,7 +47,6 @@ INSTALLED_APPS = [
     'drf_yasg',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    
     'backend',
 ]
 
@@ -200,23 +199,29 @@ SWAGGER_SETTINGS = {
 # Настройки логирования
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-        'format': '{levelname} {asctime} {module} {message}',
-        'style': '{',
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
         },
     },
     'handlers': {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': 'logs/debug.log',
             'encoding': 'utf-8',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
         },

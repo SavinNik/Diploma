@@ -287,7 +287,6 @@ class Order(models.Model):
     status = models.CharField(verbose_name='Статус заказа', max_length=50, choices=STATE_CHOICES)
     contact = models.ForeignKey(Contact, verbose_name='Контакты', null=True, on_delete=models.CASCADE, blank=True)
 
-
     class Meta:
         verbose_name = 'Заказ'
         verbose_name_plural = 'Список заказов'

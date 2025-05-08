@@ -525,7 +525,7 @@ class OrderTestCase(TestCase):
             'id': self.order.id,
             'contact': self.contact.id,
         }
-        response = self.client.post(self.url, format='json')
+        response = self.client.post(self.url, data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("Status", response.data)
         updated_order = Order.objects.get(id=self.order.id)

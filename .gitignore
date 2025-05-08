@@ -1,6 +1,13 @@
 .env
 .idea/
+__pycache__/
 *~
+.log
 debug.log
 celerybeat-schedule
-__pycache__
+celerybeat-schedule.db
+.vscode
+*.swp
+*/migrations/*.py
+*/migrations/*.pyc
+*.tmp
