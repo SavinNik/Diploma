@@ -211,6 +211,7 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
             'filename': 'debug.log',
+            'encoding': 'utf-8',
         },
     },
     'loggers': {
