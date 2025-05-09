@@ -132,7 +132,7 @@ AUTH_USER_MODEL = 'backend.User'
 
 
 # Настройки электронной почты
-EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST')                               # Хост SMTP-сервера
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')                     # Логин для SMTP-сервера
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')             # Пароль для SMTP-сервера
