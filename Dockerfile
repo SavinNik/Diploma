@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD["gunicorn", "--bind", "0:8000", "--workers", "4", "--threads", "4", "backend.wsgi:application"]
+CMD ["gunicorn", "--bind", "0:8000", "--workers", "4", "--threads", "4", "backend.wsgi:application"]

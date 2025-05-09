@@ -317,6 +317,7 @@ class CategoryView(ListAPIView):
 
 
 class ShopView(ListAPIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для получения списка магазинов
     """
@@ -1101,6 +1102,7 @@ class OrderView(APIView):
 
 
 class SendEmailView(APIView):
+    permission_classes = [IsAuthenticated]
     """
     Класс для отправки электронной почты
     """
