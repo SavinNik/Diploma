@@ -11,3 +11,5 @@ celerybeat-schedule.db
 */migrations/*.py
 */migrations/*.pyc
 *.tmp
+__pycache__/
+*.pyc
