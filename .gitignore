@@ -13,3 +13,6 @@ celerybeat-schedule.db
 *.tmp
 __pycache__/
 *.pyc
+
+__pycache__/
+*.pyc
