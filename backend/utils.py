@@ -1,3 +1,8 @@
+from functools import wraps
+from django.core.cache import cache
+from django.utils.encoding import force_bytes
+import hashlib
+from rest_framework.response import Response
 import requests
 from django.http import JsonResponse
 from django_rest_passwordreset.models import ResetPasswordToken
@@ -63,3 +68,41 @@ def validate_url(url):
         return True
     except requests.exceptions.RequestException:
         raise ValueError("Неверный URL")
+
+
+def cache_api_response(timeout=60 * 15):
+    """
+    Декоратор для кэширования ответов API.
+    """
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(self, request, *args, **kwargs):
+            # Генерируем ключ кэша на основе URL и параметров запроса
+            path = request.get_full_path()
+            cache_key = f'api:{request.method}:{path}'
+
+            # Добавляем параметры запроса в ключ
+            if request.GET:
+                cache_key += f'?{request.META["QUERY_STRING"]}'
+
+            cache_key = hashlib.md5(force_bytes(cache_key)).hexdigest()
+
+            # Пытаемся получить данные из кэша
+            if request.method == 'GET':
+                cached_response = cache.get(cache_key)
+                if cached_response is not None:
+                    return Response(cached_response)
+
+            # Если данных в кэше нет, выполняем view-функцию
+            response = view_func(self, request, *args, **kwargs)
+
+            # Кэшируем только успешные GET-запросы
+            if request.method == 'GET' and response.status_code == 200:
+                cache.set(cache_key, response.data, timeout)
+
+            return response
+
+        return _wrapped_view
+
+    return decorator

@@ -10,6 +10,8 @@ from django.db import IntegrityError
 from django.db.models import Q, F, Sum
 from django.http import JsonResponse
 
+from rest_framework.decorators import api_view
+
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
@@ -26,7 +28,7 @@ from backend.serializers import CategorySerializer, ShopSerializer, ProductInfoS
     OrderSerializer, ContactSerializer, UserSerializer, CustomTokenObtainPairSerializer, ContactUpdateSerializer
 from backend.signals import new_order
 from backend.tasks import do_import, send_email
-from backend.utils import string_to_bool, AccessMixin
+from backend.utils import string_to_bool, AccessMixin, cache_api_response
 
 User = get_user_model()
 
@@ -301,6 +303,7 @@ class CategoryView(ListAPIView):
         },
         security=[{'Bearer': []}]
     )
+    @cache_api_response(timeout=60*15)
     def get(self, request: Request, *args, **kwargs):
         """
         Получение списка категорий
@@ -331,6 +334,7 @@ class ShopView(ListAPIView):
         },
         security=[{'Bearer': []}]
     )
+    @cache_api_response(timeout=60*15)
     def get(self, request: Request, *args, **kwargs):
         """
         Получение списка магазинов
@@ -370,6 +374,7 @@ class ProductInfoView(APIView):
         },
         security=[{'Bearer': []}]
     )
+    @cache_api_response(timeout=60*15)
     def get(self, request: Request, *args, **kwargs):
         """
         Получение информации о продукте с фильтрацией
@@ -1193,3 +1198,21 @@ class TaskStatusView(APIView):
             return render(request, 'admin/task_status.html', context)
 
         return JsonResponse(context)
+
+
+@api_view(['GET'])
+def cache_info(request):
+    """Информация о кэше"""
+    from django_redis import get_redis_connection
+    import redis
+
+    try:
+        conn = get_redis_connection("default")
+        info = {
+            'keys': [key.decode('utf-8') for key in conn.keys('*')],
+            'memory_used': conn.info('memory')['used_memory_human'],
+            'total_keys': len(conn.keys('*')),
+        }
+        return Response(info)
+    except redis.ConnectionError:
+        return Response({"error": "Redis connection error"}, status=500)
