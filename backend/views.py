@@ -281,7 +281,7 @@ class LoginView(APIView):
                 return JsonResponse({'Status': True,
                                      'Refresh': str(refresh),
                                      'Access': str(refresh.access_token)
-                                     })
+                                     }, status=200)
             else:
                 return JsonResponse({'Status': False, 'Errors': 'Неправильно указан email или пароль'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})

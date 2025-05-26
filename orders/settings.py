@@ -93,6 +93,7 @@ DATABASES = {
         'PASSWORD': config('DATABASE_PASSWORD'),
         'HOST': config('DATABASE_HOST'),
         'PORT': config('DATABASE_PORT'),
+        'ATOMIC_REQUESTS': False,
     }
 }
 
