@@ -152,3 +152,4 @@ def test_get_products(authenticated_client):
         assert 'price' in product
         assert 'price_rrc' in product
         assert 'quantity' in product
+        
