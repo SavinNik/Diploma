@@ -3,8 +3,8 @@ name: 'Coverage Report for views.py'
 on:
     pull_request:
         branches:
-            - master
             - main
+            - master
 
 jobs:
     coverage:
@@ -23,14 +23,10 @@ jobs:
                 pip install -r requirements.txt
 
           - name: Run migrations
-            env:
-              DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
             run: |
                 python manage.py migrate --noinput
 
-          - name: Run tests with coverage for views.py
-            env:
-              DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          - name: Run tests and generate coverage.xml
             run: |
                 pytest --cov=backend.views --cov-report xml:coverage.xml -v
 
