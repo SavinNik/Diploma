@@ -23,10 +23,14 @@ jobs:
                 pip install -r requirements.txt
 
           - name: Run migrations
+            env:
+              DEBUG: "True"
             run: |
                 python manage.py migrate --noinput
 
           - name: Run tests and generate coverage.xml
+            env:
+              DEBUG: "True"
             run: |
                 pytest --cov=backend.views --cov-report xml:coverage.xml -v
 
