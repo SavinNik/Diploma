@@ -88,11 +88,11 @@ WSGI_APPLICATION = 'orders.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DATABASE_NAME'),
-        'USER': config('DATABASE_USER'),
-        'PASSWORD': config('DATABASE_PASSWORD'),
-        'HOST': config('DATABASE_HOST'),
-        'PORT': config('DATABASE_PORT'),
+        'NAME': config('DATABASE_NAME', default='test_db_postgres'),
+        'USER': config('DATABASE_USER', default='test_user'),
+        'PASSWORD': config('DATABASE_PASSWORD', default='test_password'),
+        'HOST': config('DATABASE_HOST', default='localhost'),
+        'PORT': config('DATABASE_PORT', default='5432'),
         'ATOMIC_REQUESTS': False,
     }
 }
@@ -137,13 +137,13 @@ AUTH_USER_MODEL = 'backend.User'
 
 # Настройки электронной почты
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST')                               # Хост SMTP-сервера
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')                     # Логин для SMTP-сервера
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')             # Пароль для SMTP-сервера
-EMAIL_PORT = config('EMAIL_PORT')                               # Порт SMTP-сервера
-EMAIL_USE_SSL = config('EMAIL_USE_SSL', cast=bool)             # Использование SSL для SMTP-сервера
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)             # Использование TLS для SMTP-сервера
-SERVER_EMAIL = config('SERVER_EMAIL')                           # Адрес отправителя
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')                       # Хост SMTP-сервера
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')                      # Логин для SMTP-сервера
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')              # Пароль для SMTP-сервера
+EMAIL_PORT = config('EMAIL_PORT', default=25)                                # Порт SMTP-сервера
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', cast=bool, default=False)            # Использование SSL для SMTP-сервера
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool, default=True)             # Использование TLS для SMTP-сервера
+SERVER_EMAIL = config('SERVER_EMAIL', default='no-reply@example.com')        # Адрес отправителя
 
 # Настройки REST Framework
 REST_FRAMEWORK = {
