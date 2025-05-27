@@ -85,17 +85,28 @@ WSGI_APPLICATION = 'orders.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DATABASE_NAME', default='test_db_postgres'),
-        'USER': config('DATABASE_USER', default='test_user'),
-        'PASSWORD': config('DATABASE_PASSWORD', default='test_password'),
-        'HOST': config('DATABASE_HOST', default='localhost'),
-        'PORT': config('DATABASE_PORT', default='5432'),
-        'ATOMIC_REQUESTS': False,
+# База данных
+if os.environ.get('GITHUB_WORKFLOW'):
+    # Используем SQLite в GitHub Actions
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
     }
-}
+else:
+    # Используем PostgreSQL в проде или локально
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DATABASE_NAME', default='mydb'),
+            'USER': config('DATABASE_USER', default='user'),
+            'PASSWORD': config('DATABASE_PASSWORD', default='pass'),
+            'HOST': config('DATABASE_HOST', default='localhost'),
+            'PORT': config('DATABASE_PORT', default='5432'),
+            'ATOMIC_REQUESTS': False,
+        }
+    }
 
 
 # Password validation
