@@ -43,6 +43,7 @@
 - **Celery**
 - **Docker**
 - **Swagger/OpenAPI**
+- **Pytest**
 
 ## Архитектура приложения
 ```
@@ -66,6 +67,9 @@
 │   │   └── admin
 │   │       └── run_task_form.html
 │   ├── tests.py
+│   │   ├── __init__.py
+│   │   ├── conftest.py
+│   │   └── test_views.py
 │   ├── urls.py
 │   ├── utils.py
 │   └── views.py
@@ -262,6 +266,11 @@ python manage.py createsuperuser
 - Подтверждение email пользователем.
 - Эндпоинты защищены, требуется передача токена в заголовке Authorization: Bearer <token>.
 - Пароли хранятся в хешах.
+
+## Тестирование
+
+- Pytest для тестирования API.
+![Coverage](https://img.shields.io/badge/Coverage-44%25-success?color=brightgreen )
 
 
 
