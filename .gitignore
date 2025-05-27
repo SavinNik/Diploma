@@ -8,7 +8,6 @@ celerybeat-schedule
 celerybeat-schedule.db
 .vscode
 *.swp
-*/migrations/*.py
 */migrations/*.pyc
 *.tmp
 __pycache__/
