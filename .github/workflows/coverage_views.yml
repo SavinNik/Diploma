@@ -23,10 +23,14 @@ jobs:
                 pip install -r requirements.txt
 
           - name: Run migrations
+            env:
+              DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
             run: |
                 python manage.py migrate --noinput
 
           - name: Run tests with coverage for views.py
+            env:
+              DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
             run: |
                 pytest --cov=backend.views --cov-report xml:coverage.xml -v
 
