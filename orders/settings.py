@@ -170,6 +170,14 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
+'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '3/day',   # анонимные пользователи: 3 запроса в день
+        'user': '5/day'    # авторизованные пользователи: 5 запросов в день
+    }
 }
 
 # Настройки JWT

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 
 
+
 @pytest.fixture(scope='session')
 def django_db_setup():
     settings.DATABASES['default'] = {

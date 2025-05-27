@@ -3,6 +3,9 @@ import json
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.test.utils import override_settings
+from rest_framework.test import APIClient
+from django.core.cache import cache
 
 # Тестирование регистрации пользователя
 @pytest.mark.django_db
@@ -152,4 +155,41 @@ def test_get_products(authenticated_client):
         assert 'price' in product
         assert 'price_rrc' in product
         assert 'quantity' in product
-        
+
+@override_settings(
+    CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'test-cache'
+        }
+    },
+    REST_FRAMEWORK={
+        'DEFAULT_THROTTLE_CLASSES': [
+            'rest_framework.throttling.AnonRateThrottle',
+            'rest_framework.throttling.UserRateThrottle',
+        ],
+        'DEFAULT_THROTTLE_RATES': {
+            'anon': '3/day',
+            'user': '5/day',
+        }
+    }
+)
+@pytest.mark.django_db
+def test_throttling(create_user):
+    client = APIClient()
+    url = '/api/test-throttle/'
+
+    # Анонимный пользователь
+    for i in range(4):
+        response = client.get(url)
+        assert response.status_code == 200 if i < 3 else 429
+
+    # Авторизованный пользователь
+    client.force_authenticate(user=create_user)
+
+    for i in range(6):
+        response = client.get(url)
+        assert response.status_code == 200 if i < 5 else 429
+
+    # Очистка кэша после теста
+    cache.clear() # noqa

@@ -1216,3 +1216,9 @@ def cache_info(request):
         return Response(info)
     except redis.ConnectionError:
         return Response({"error": "Redis connection error"}, status=500)
+
+
+class TestThrottleView(APIView):
+    """Тестовая вьюха для проверки лимитов"""
+    def get(self, request):
+        return Response({"message": "Success"})
