@@ -1,3 +1,5 @@
+import logging
+
 from celery.result import AsyncResult
 
 from django.shortcuts import render
@@ -9,6 +11,7 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import Q, F, Sum
 from django.http import JsonResponse
+from rest_framework import status
 
 from rest_framework.decorators import api_view
 
@@ -1222,3 +1225,47 @@ class TestThrottleView(APIView):
     """Тестовая вьюха для проверки лимитов"""
     def get(self, request):
         return Response({"message": "Success"})
+
+
+logger = logging.getLogger(__name__)
+
+class SentryTestView(APIView):
+    """
+    API View для тестирования интеграции с Sentry.
+    Генерирует различные типы ошибок для проверки мониторинга.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Генерация различных типов ошибок
+        error_type = request.query_params.get('type', 'division')
+
+        if error_type == 'division':
+            # Деление на ноль
+            result = 1 / 0
+        elif error_type == 'index':
+            # Ошибка индекса
+            items = [1, 2, 3]
+            result = items[10]
+        elif error_type == 'key':
+            # Ошибка ключа
+            data = {'valid_key': 'value'}
+            result = data['invalid_key']
+        elif error_type == 'log':
+            # Кастомное логирование
+            logger.error("Тестовая ошибка для Sentry (уровень ERROR)")
+            logger.warning("Тестовое предупреждение для Sentry (уровень WARNING)")
+            return Response({
+                'status': 'success',
+                'message': 'Ошибки сгенерированы в логах, проверьте Sentry'
+            }, status=status.HTTP_200_OK)
+        elif error_type == 'value':
+            # Ошибка значения
+            int("not_a_number")
+        else:
+            return Response({
+                'error': 'Неизвестный тип ошибки',
+                'available_types': ['division', 'index', 'key', 'value', 'log']
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'result': result}, status=status.HTTP_200_OK)

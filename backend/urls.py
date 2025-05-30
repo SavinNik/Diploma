@@ -2,7 +2,7 @@ from django.urls import path
 from django_rest_passwordreset.views import reset_password_request_token, reset_password_confirm
 from backend.views import PartnerUpdate, PartnerState, PartnerOrders, RegisterAccount, ConfirmAccount, \
     AccountDetails, CategoryView, ShopView, ProductInfoView, BasketView, OrderView, ContactView, LoginView, cache_info, \
-    TestThrottleView
+    TestThrottleView, SentryTestView
 
 app_name = 'backend'
 
@@ -35,4 +35,7 @@ urlpatterns = [
 
     # Эндпоинт для тестирования лимитов
     path('test-throttle/', TestThrottleView.as_view(), name='test_throttle'),
+
+    # Эндпоинт для тестирования Sentry
+    path('sentry-test/', SentryTestView.as_view(), name='sentry-test'),
 ]
